@@ -2,6 +2,23 @@ display_information:
   name: Thread Police
   description: Privately nudges people to move channel replies into the thread they belong in.
   background_color: "#1f2937"
+  long_description: |
+    Thread Police keeps your channels readable by getting replies into the threads they belong in.
+
+    When someone posts a top-level message that's really a follow-up to their own earlier message, or a reply to someone else's, Thread Police sends them a private nudge that only they can see. No one else is notified and nothing is posted publicly.
+
+    The nudge has two buttons:
+    • *Move to thread* reposts the message into the right thread under the author's name and avatar. If your workspace admin has enabled it, the original is removed from the channel automatically.
+    • *Ignore* dismisses the nudge.
+
+    *How it decides*
+    Thread Police looks at the new message alongside recent messages in the channel and asks a decision model whether it's a response to one of them. It only nudges when it's confident. It skips bot posts, thread replies, messages with files, and @channel / @here announcements, and it won't nudge the same person more than once every few minutes.
+
+    *Privacy*
+    Message content is never stored. The bot keeps only a short rolling window of recent messages in memory, for the channels it has been invited to, and forgets it on restart.
+
+    *Self-hosted and open source*
+    Thread Police runs on your own infrastructure using Socket Mode, so it needs no public URL. Invite it to a channel with /invite @Thread Police to start.
 features:
   bot_user:
     display_name: Thread Police

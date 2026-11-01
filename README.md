@@ -64,7 +64,7 @@ Move leaves a message where it is if it already has thread replies of its own (m
 1. Go to [api.slack.com/apps](https://api.slack.com/apps) → **Create New App** → **From a manifest**, pick your workspace, and paste the contents of [`slack-app-manifest.yml`](slack-app-manifest.yml).
 2. **Install to Workspace**. Copy the **Bot User OAuth Token** (`xoxb-…`) from **OAuth & Permissions** into `SLACK_BOT_TOKEN`.
 3. Under **Basic Information → App-Level Tokens**, generate a token with the `connections:write` scope. Copy it (`xapp-…`) into `SLACK_APP_TOKEN`.
-4. Optional: under **Basic Information → Display Information**, upload [`assets/icon.png`](assets/icon.png) as the app icon (manifests can't set one).
+4. The manifest fills in the app's name, short and long description and background colour (**Basic Information → Display Information**). Upload [`assets/icon.png`](assets/icon.png) there as the app icon yourself, since manifests can't set one.
 5. Invite the bot to each channel it should watch: `/invite @Thread Police`. It only ever sees channels it's a member of, so removing it from a channel turns it off there.
 6. *Optional, so Move deletes originals:* the manifest also requests the `chat:write` user scope, so installing creates a **User OAuth Token** (`xoxp-…`) for whoever installed the app, shown on **OAuth & Permissions**. If that person is a workspace admin or owner, put it in `SLACK_USER_TOKEN`. Treat it like a password: it can post and delete as that admin.
 
