@@ -5,7 +5,7 @@
 <h1 align="center">🚨 Slack Thread Police 🧵</h1>
 
 <p align="center">
-  A <strong>free, open-source, self-hosted and private</strong> intelligent Slack bot that keeps channels tidy by nudging users to thread their messages.
+  A <strong>free, open-source, self-hosted and private</strong> Slack bot that keeps channels tidy by nudging users to thread their messages. Powered by a system one decision model.
 </p>
 
 ## What it does
