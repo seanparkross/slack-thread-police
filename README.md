@@ -2,8 +2,10 @@
 
 A free, open-source, self-hosted Slack bot that keeps channels tidy. When someone posts a top-level message that belongs in the thread of a recent message (most often a follow-up to their own earlier message, or a reply to someone else's), Thread Police sends them a private nudge ("Only visible to you"):
 
-> 🧵 Your last 3 messages look like follow-ups to your earlier message:
+> 🧵 This looks like a follow-up to your earlier message:
 > > Does anyone know when the staging deploy is scheduled for today?
+>
+> Move it, and any follow-ups, into the thread?
 >
 > **[Move to thread]** [Ignore]
 
@@ -58,6 +60,8 @@ A bot token can't post as a user or delete their messages, so Move is a copy: th
 Move leaves a message where it is if it already has thread replies of its own (moving it would strand them), and refuses if the earlier message has been deleted. A true one-click move, where the copy is posted as the person themselves, is in the [backlog](BACKLOG.md).
 
 ## Setup
+
+**Have an AI agent do it.** If you use an agent that can drive your browser and a shell (for example Claude Code with Claude in Chrome), paste the prompt from [`AGENT_SETUP.md`](AGENT_SETUP.md) into it. It asks you a few questions, creates the Slack app, collects the keys from your browser into a locked-down env file, starts the bot locally or on your server, and tests it. The manual steps are below.
 
 ### 1. Create the Slack app
 
