@@ -1,0 +1,35 @@
+# systemd unit for running Slack Thread Police with Node, without Docker.
+# Install: see "Running it on your own server" in README.md.
+
+[Unit]
+Description=Slack Thread Police
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# A throwaway user that exists only while the service runs, so the bot can't read anyone's home
+# directory and nobody else's processes can read its tokens.
+DynamicUser=yes
+WorkingDirectory=/opt/slack-thread-police
+# Root-owned, chmod 600. systemd reads it before dropping privileges.
+EnvironmentFile=/etc/slack-thread-police/env
+# The only thing the bot writes: /threadpolice opt-outs (user ids and times, never messages).
+StateDirectory=slack-thread-police
+Environment=DATA_DIR=/var/lib/slack-thread-police
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+MemoryMax=512M
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectControlGroups=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target

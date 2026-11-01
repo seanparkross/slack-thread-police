@@ -1,0 +1,13 @@
+services:
+  thread-police:
+    build: .
+    image: slack-thread-police
+    env_file: .env
+    restart: unless-stopped
+    init: true
+    volumes:
+      # Keeps /threadpolice opt-outs and snoozes across restarts (user ids only, no messages).
+      - thread-police-data:/app/data
+
+volumes:
+  thread-police-data:
