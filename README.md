@@ -1,6 +1,12 @@
-# 🚨 Slack Thread Police 🧵
+<p align="center">
+  <img src="assets/icon-256.png" alt="Thread Police icon: a spool of red and blue thread under police lights" width="128" height="128">
+</p>
 
-A **free, open-source, self-hosted and private** intelligent Slack bot that keeps channels tidy by nudging users to thread their messages. 
+<h1 align="center">🚨 Slack Thread Police 🧵</h1>
+
+<p align="center">
+  A <strong>free, open-source, self-hosted and private</strong> intelligent Slack bot that keeps channels tidy by nudging users to thread their messages.
+</p>
 
 ## What it does
 
@@ -28,6 +34,10 @@ One click on **Move to thread**, and the channel reads:
 > **Sam** 10:02  
 > Does anyone know when the staging deploy is happening today?  
 > 💬 1 reply: *Asking because I need to get a migration in before it goes out*
+
+Here's what it looks like in Slack once a follow-up has been moved:
+
+<img src="assets/screenshot-moved.png" alt="In Slack, a question now shows '1 reply', and a private Thread Police message below it says 'Moved to the thread. View it in the thread'" width="562">
 
 **Move to thread** reposts the messages into the right thread under the author's name and avatar, then tells them they can delete the originals (or deletes them itself, if you allow it). **Ignore** dismisses the nudge. Nobody else sees anything, and anyone can turn nudges off for themselves with `/threadpolice off`.
 
