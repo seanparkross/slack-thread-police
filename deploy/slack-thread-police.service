@@ -1,5 +1,5 @@
 # systemd unit for running Slack Thread Police with Node, without Docker.
-# Install: see "Running it on your own server" in README.md.
+# Install: see "Running it on your own server" in docs/setup.md.
 
 [Unit]
 Description=Slack Thread Police

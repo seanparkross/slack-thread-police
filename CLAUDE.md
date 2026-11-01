@@ -7,7 +7,7 @@ Slack Thread Police: a self-hosted Slack bot (Bolt, Socket Mode) that privately 
 - `pnpm dev` — run once with `.env` loaded (exits on config errors); `pnpm dev:watch` restarts on change
 - `pnpm typecheck` / `pnpm test` / `pnpm build` — all three must pass before handing work back
 - `docker compose up -d --build` — production-style run (stop any local `pnpm dev` first, or both copies answer Slack)
-- `deploy/slack-thread-police.service` — systemd unit for running on a server without Docker; the README's "Running it on your own server" section covers both ways
+- `deploy/slack-thread-police.service` — systemd unit for running on a server without Docker; "Running it on your own server" in `docs/setup.md` covers both ways
 
 ## Architecture (`src/`)
 
@@ -36,6 +36,6 @@ Slack Thread Police: a self-hosted Slack bot (Bolt, Socket Mode) that privately 
 - The base URL stays configurable so any `/v1/systemone` server (e.g. llama-server) can replace the hosted model.
 - `pnpm-workspace.yaml` records that esbuild's install script is deliberately skipped (`allowBuilds: esbuild: false`); without it, `pnpm install` fails inside Docker. Approve or deny any new dependency's build script there too.
 - ESM with `nodenext`: relative imports use the `.js` extension. `verbatimModuleSyntax` is on, so type-only imports use `import type`.
-- New env vars go in `config.ts`, `.env.example` and the README config table together.
-- Manifest changes (scopes, commands, events) need the app reinstalled; say so in the README when you make one.
+- New env vars go in `config.ts`, `.env.example` and the table in `docs/configuration.md` together.
+- Manifest changes (scopes, commands, events) need the app reinstalled; say so in `docs/setup.md` when you make one.
 - Planned work lives in `BACKLOG.md` (not Linear). Remove an item when it ships.

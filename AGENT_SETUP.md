@@ -22,8 +22,8 @@ tell me exactly what to click and paste.
 
 ## 0. Before you start
 
-Clone the repository and read README.md, slack-app-manifest.yml and .env.example, so you know
-how the bot works and which settings exist:
+Clone the repository and read README.md, docs/setup.md, docs/configuration.md,
+slack-app-manifest.yml and .env.example, so you know how the bot works and which settings exist:
 
     git clone https://github.com/seanparkross/slack-thread-police.git
 
@@ -117,13 +117,13 @@ Exactly one copy may run per Slack app. If Slack splits events between two copie
 only sees half of each conversation. Stop any copy that's already running before you start a
 new one.
 
-Follow README.md, section "Running it on your own server", for the option I picked:
+Follow docs/setup.md, section "Running it on your own server", for the option I picked:
 
 - a. On this computer: `cp .env.example .env` (mode 600), fill it in, then
   `docker compose up -d --build`.
 - b. Server with Docker: clone the repo on the server, create `.env` there (mode 600) using
   ssh stdin, then `docker compose up -d --build`. Ask before installing Docker.
-- c. Server without Docker: follow "Option B: Node and systemd" in the README as root, with the
+- c. Server without Docker: follow "Option B: Node and systemd" in docs/setup.md as root, with the
   keys in /etc/slack-thread-police/env (root, mode 600) and the unit file from deploy/. Check
   `node --version` is 22 or newer first, and ask before installing anything.
 

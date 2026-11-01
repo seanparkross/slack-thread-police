@@ -70,7 +70,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       return issue.message.startsWith(key) ? `  - ${issue.message}` : `  - ${key}: ${issue.message}`;
     });
     throw new ConfigError(
-      `Invalid configuration:\n${problems.join("\n")}\n\nCopy .env.example to .env and fill it in (see README.md).`,
+      `Invalid configuration:\n${problems.join("\n")}\n\nCopy .env.example to .env and fill it in (see docs/setup.md).`,
     );
   }
   const e = parsed.data;

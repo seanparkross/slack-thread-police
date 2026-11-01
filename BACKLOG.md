@@ -38,7 +38,7 @@ Then any change to the prompt, thresholds or model can be judged on the same tes
 
 **Why.** Catch broken changes automatically, and let self-hosters run the bot without cloning the repo.
 
-**Done when.** Every push runs typecheck, tests and build on GitHub Actions, and tagged releases publish an image to GitHub's container registry, so the README can say `docker run --env-file .env ghcr.io/…/slack-thread-police`. Needs a GitHub remote first.
+**Done when.** Every push runs typecheck, tests and build on GitHub Actions, and tagged releases publish an image to GitHub's container registry, so the setup docs can say `docker run --env-file .env ghcr.io/…/slack-thread-police`.
 
 ## Health check and structured logs
 
@@ -58,7 +58,7 @@ Then any change to the prompt, thresholds or model can be judged on the same tes
 
 **Why.** `TYPESAFE_BASE_URL` can point at llama.cpp's `llama-server`, but nobody has tried it yet.
 
-**Done when.** The README has a tested recipe (model, `llama-server` flags, expected speed on a small machine) that passes the evaluation set above reasonably well.
+**Done when.** `docs/configuration.md` has a tested recipe (model, `llama-server` flags, expected speed on a small machine) that passes the evaluation set above reasonably well.
 
 ## Hosted, multi-workspace version
 

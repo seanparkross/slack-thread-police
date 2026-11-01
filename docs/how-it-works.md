@@ -1,0 +1,37 @@
+# How it works
+
+1. The bot listens to messages in the channels it's in, keeping an in-memory window (`CONTEXT_MESSAGES`, `CONTEXT_MAX_AGE_MINUTES`) up to date with new posts, edits, deletes and thread replies. The first time it sees a channel, it seeds the window from recent history.
+2. For each new top-level message from a person, it asks the model two typed questions through TypeSafe's System One API (`POST /v1/systemone`):
+   - `is_reply` (yes/no): is this a response to one specific earlier message?
+   - `parent` (choice): which recent message, or `none`?
+3. If both probabilities clear their thresholds (`REPLY_THRESHOLD`, `PARENT_THRESHOLD`), the nudge goes out straight away, privately, quoting the start of the earlier message. A cooldown (`USER_COOLDOWN_MINUTES`) then stops that person being nudged again for a while.
+4. Further follow-ups to the same message don't get nudges of their own. They join the first one, so **Move to thread** moves them all, and the confirmation gives the real count.
+
+Slack doesn't let a bot edit a private nudge once it's sent, so the nudge can't count follow-ups that arrive after it; it says up front that Move takes them too. If you'd rather have one nudge that counts the whole run ("Your last 3 messages…"), set `NUDGE_DELAY_SECONDS` to wait for the person to stop typing first (at most a minute in all).
+
+When the earlier message is the author's own, the nudge calls it a follow-up to "your earlier message" instead.
+
+It skips bot posts, thread replies, messages with files, and `@channel` / `@here` / `@everyone` announcements.
+
+If the model is unreachable or errors, the bot logs it and stays silent.
+
+Every check is logged with its probabilities (ids only), and once an hour the bot logs how many nudges each channel got and how many were moved or ignored, flagging channels where most nudges are ignored.
+
+## Turning nudges off
+
+Anyone can control their own nudges with a slash command. The reply is private.
+
+| Command | Effect |
+| --- | --- |
+| `/threadpolice off` | Stop nudging me. |
+| `/threadpolice snooze 2h` | Pause for a while: minutes, hours, days or weeks (`30m`, `2h`, `3d`, `1w`), up to 90 days. |
+| `/threadpolice on` | Turn nudges back on. |
+| `/threadpolice status` | Show whether nudges are on, off or snoozed. |
+
+## About "Move to thread"
+
+A bot token can't post as a user or delete their messages, so Move is a copy: the bot posts the message into the thread with the author's name and avatar (Slack labels it as an app message, with a small "Moved from the channel by Thread Police" line), and the nudge changes to "Moved — you can now delete your original" with a link to the copy.
+
+**Optional: delete the original too.** Set `SLACK_USER_TOKEN` to the User OAuth Token (`xoxp-…`) of a workspace admin or owner (see [setup step 1.6](setup.md#1-create-the-slack-app)). Move then deletes the original after posting the copy, and the nudge just says "Moved to the thread". This only works for messages that admin is allowed to delete: their own always, other people's only if your workspace lets admins delete members' messages. Slack records those deletes as done by that admin. If a delete fails, Move falls back to asking the author to delete it.
+
+Move leaves a message where it is if it already has thread replies of its own (moving it would strand them), and refuses if the earlier message has been deleted. A true one-click move, where the copy is posted as the person themselves, is in the [backlog](../BACKLOG.md).
