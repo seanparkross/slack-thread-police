@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   type Channel,
+  ChannelJoiner,
   isWorkspaceAdmin,
   type JoinClient,
   joinChannels,
@@ -86,6 +87,13 @@ describe("resolveJoin", () => {
       unjoinable: ["<#G1>", "<#C9>", "#typo"],
     });
   });
+
+  it("reports an unknown channel once, however often it's named", () => {
+    expect(resolveJoin({ all: false, ids: ["C9", "C9"], names: ["typo", "typo"] }, all).unjoinable).toEqual([
+      "<#C9>",
+      "#typo",
+    ]);
+  });
 });
 
 describe("joinChannels", () => {
@@ -125,5 +133,51 @@ describe("joinSummary", () => {
     expect(joinSummary({ toJoin: [], already: [], unjoinable: [] }, { joined: [], failed: [] })).toMatch(
       /no public channels left/,
     );
+  });
+});
+
+describe("ChannelJoiner", () => {
+  const ALL = { all: true, ids: [], names: [] };
+  const noop = async () => {};
+
+  it("never joins anything for someone who isn't an admin", async () => {
+    const { client, join } = fakeClient({ user: { is_admin: false } });
+    await expect(new ChannelJoiner(client).run("U1", ALL, noop)).resolves.toEqual({ status: "not_admin" });
+    expect(join).not.toHaveBeenCalled();
+  });
+
+  it("joins for an admin and marks the cached channels as joined", async () => {
+    const { client, join, list } = fakeClient({ user: { is_owner: true } });
+    const joiner = new ChannelJoiner(client);
+    const run = await joiner.run("U1", ALL, noop);
+    expect(run.status === "done" && run.outcome.joined).toEqual([eng]);
+    expect(join).toHaveBeenCalledWith({ channel: "C1" });
+    expect((await joiner.channels()).find((c) => c.id === "C1")?.isMember).toBe(true);
+    expect(list).toHaveBeenCalledTimes(2); // one listing of two pages, reused afterwards
+  });
+
+  it("runs one bulk join at a time", async () => {
+    let release = () => {};
+    const { client } = fakeClient({ user: { is_admin: true } });
+    const joiner = new ChannelJoiner(client);
+    const first = joiner.run("U1", ALL, noop);
+    // Hold the first run inside its join loop.
+    client.conversations.join = vi.fn(() => new Promise((resolve) => (release = () => resolve({ ok: true })))) as never;
+    await vi.waitFor(() => expect(client.conversations.join).toHaveBeenCalled());
+    await expect(joiner.run("U2", ALL, noop)).resolves.toEqual({ status: "busy" });
+    release();
+    await expect(first).resolves.toMatchObject({ status: "done" });
+  });
+
+  it("reuses the channel list for a minute", async () => {
+    let now = 0;
+    const { client, list } = fakeClient();
+    const joiner = new ChannelJoiner(client, () => now);
+    await joiner.channels();
+    await joiner.channels();
+    expect(list).toHaveBeenCalledTimes(2);
+    now = 61_000;
+    await joiner.channels();
+    expect(list).toHaveBeenCalledTimes(4);
   });
 });

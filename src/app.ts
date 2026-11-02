@@ -7,14 +7,7 @@ import type { UserCooldown } from "./cooldown.js";
 import type { ThreadDetector } from "./detector.js";
 import { nudgeSkipReason, type RawMessage, threadParentOf, toChannelMessage } from "./eligibility.js";
 import { ADD_CHANNELS_ACTION, homeView, JOIN_ALL_ACTION, JOIN_MODAL, joinModal, pickedChannels } from "./home.js";
-import {
-  isWorkspaceAdmin,
-  type JoinRequest,
-  joinChannels,
-  joinSummary,
-  listChannels,
-  resolveJoin,
-} from "./join.js";
+import { ChannelJoiner, isWorkspaceAdmin, type JoinRequest, joinSummary } from "./join.js";
 import { type DeleteClient, moveToThread } from "./move.js";
 import type { PreferenceStore } from "./preferences.js";
 import type { NudgeStats } from "./stats.js";
@@ -39,12 +32,10 @@ const BURST_MAX_WAIT_MS = 60_000;
 /** After the nudge, later follow-ups keep joining its burst (for Move to sweep up) this long. */
 const BURST_TTL_MS = 30 * 60_000;
 
-/** Joining more channels than this says "working on it" first, since Slack allows about 50 joins a minute. */
-const SLOW_JOIN = 5;
-
 const NOT_ADMIN =
   "Only workspace admins and owners can add me to channels in bulk. To add me to a channel you're in, run `/invite @Thread Police` there.";
 const JOIN_USAGE = `Which channels? For example \`${COMMAND} join #eng #design\`, or \`${COMMAND} join all\` for every public channel.`;
+const JOIN_BUSY = "I'm still adding channels from an earlier request. Try again once that's finished.";
 const JOIN_FAILED = ":warning: Something went wrong adding channels. The bot's logs say why.";
 
 /** Message text never goes into logs; errors are reduced to their name and message. */
@@ -231,10 +222,15 @@ export function registerHandlers(app: App, deps: HandlerDeps): { stop(): void } 
     await respond({ delete_original: true });
   });
 
+  const joiner = new ChannelJoiner(app.client);
+
   async function publishHome(client: webApi.WebClient, user: string, notice?: string): Promise<void> {
     const [admin, channels] = await Promise.all([
-      isWorkspaceAdmin(client, user).catch(() => false),
-      listChannels(client).catch((error: unknown) => {
+      isWorkspaceAdmin(client, user).catch((error: unknown) => {
+        app.logger.warn(`Couldn't check whether ${user} is an admin: ${describeError(error)}`);
+        return false;
+      }),
+      joiner.channels().catch((error: unknown) => {
         app.logger.warn(`Couldn't list channels for the Home tab: ${describeError(error)}`);
         return null;
       }),
@@ -247,15 +243,14 @@ export function registerHandlers(app: App, deps: HandlerDeps): { stop(): void } 
 
   /** Joins the channels `request` names if `user` is an admin, and returns the report for them. */
   async function runJoin(
-    client: webApi.WebClient,
     user: string,
     request: JoinRequest,
     onSlowJoin: (count: number) => Promise<unknown>,
   ): Promise<string> {
-    if (!(await isWorkspaceAdmin(client, user))) return NOT_ADMIN;
-    const resolved = resolveJoin(request, await listChannels(client));
-    if (resolved.toJoin.length > SLOW_JOIN) await onSlowJoin(resolved.toJoin.length);
-    const outcome = await joinChannels(client, resolved.toJoin);
+    const run = await joiner.run(user, request, onSlowJoin);
+    if (run.status === "not_admin") return NOT_ADMIN;
+    if (run.status === "busy") return JOIN_BUSY;
+    const { resolved, outcome } = run;
     for (const { channel, error } of outcome.failed) {
       app.logger.warn(`Couldn't join ${channel.id}: ${describeError(error)}`);
     }
@@ -265,7 +260,7 @@ export function registerHandlers(app: App, deps: HandlerDeps): { stop(): void } 
 
   async function joinFromHome(client: webApi.WebClient, user: string, request: JoinRequest): Promise<void> {
     try {
-      const report = await runJoin(client, user, request, (count) =>
+      const report = await runJoin(user, request, (count) =>
         publishHome(client, user, `:hourglass_flowing_sand: Joining ${count} channels. This page updates when I'm done.`),
       );
       await publishHome(client, user, report);
@@ -284,14 +279,11 @@ export function registerHandlers(app: App, deps: HandlerDeps): { stop(): void } 
     }
   });
 
+  // Open straight away: the trigger expires in 3 seconds, and the join itself checks for an admin.
   app.action<BlockAction<ButtonAction>>(ADD_CHANNELS_ACTION, async ({ ack, body, client, logger }) => {
     await ack();
     try {
-      if (await isWorkspaceAdmin(client, body.user.id)) {
-        await client.views.open({ trigger_id: body.trigger_id, view: joinModal() });
-      } else {
-        await publishHome(client, body.user.id, NOT_ADMIN);
-      }
+      await client.views.open({ trigger_id: body.trigger_id, view: joinModal() });
     } catch (error) {
       logger.warn(`Couldn't open the channel picker: ${describeError(error)}`);
     }
@@ -316,7 +308,7 @@ export function registerHandlers(app: App, deps: HandlerDeps): { stop(): void } 
         return;
       }
       try {
-        const report = await runJoin(client, command.user_id, join, (count) =>
+        const report = await runJoin(command.user_id, join, (count) =>
           respond({ response_type: "ephemeral", text: `Joining ${count} channels. I'll report back here when I'm done.` }),
         );
         await respond({ response_type: "ephemeral", text: report });

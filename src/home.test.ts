@@ -8,6 +8,7 @@ const channels: Channel[] = [
   { id: "C2", name: "design", isPrivate: false, isMember: false },
   { id: "C3", name: "support", isPrivate: false, isMember: false },
   { id: "G1", name: "secret", isPrivate: true, isMember: false },
+  { id: "G2", name: "ops", isPrivate: true, isMember: true },
 ];
 
 const actionIds = (view: ReturnType<typeof homeView>) =>
@@ -21,7 +22,8 @@ describe("homeView", () => {
     const view = homeView({ admin: true, channels, status: "Nudges are on." });
     expect(actionIds(view)).toEqual([ADD_CHANNELS_ACTION, JOIN_ALL_ACTION]);
     expect(text(view)).toContain("Join all public channels (2 more)");
-    expect(text(view)).toContain("*Watching 1 channel*\\n<#C1>");
+    expect(text(view)).toContain("*Watching 2 channels*\\n<#C1>  plus 1 private channel");
+    expect(text(view)).not.toContain("G2");
   });
 
   it("drops join-all once the bot is in every public channel", () => {
@@ -32,7 +34,8 @@ describe("homeView", () => {
   it("shows everyone else where it's watching, with no buttons", () => {
     const view = homeView({ admin: false, channels, status: "Nudges are off.", notice: "Done." });
     expect(actionIds(view)).toEqual([]);
-    expect(text(view)).toContain("<#C1>");
+    expect(text(view)).toContain("*Watching 1 channel*\\n<#C1>");
+    expect(text(view)).not.toContain("private channel");
     expect(text(view)).toContain("Nudges are off.");
     expect(text(view)).toContain("Done.");
   });

@@ -70,8 +70,9 @@ export function resolveJoin(request: JoinRequest, channels: Channel[]): Resolved
     ...request.names.map((name) => ({ channel: byName.get(name), mention: `#${name}` })),
   ];
   for (const { channel, mention } of wanted) {
-    if (channel && seen.has(channel.id)) continue;
-    if (channel) seen.add(channel.id);
+    const key = channel?.id ?? mention;
+    if (seen.has(key)) continue;
+    seen.add(key);
     if (channel?.isMember) result.already.push(channel);
     else if (channel && !channel.isPrivate) result.toJoin.push(channel);
     else result.unjoinable.push(mention);
@@ -121,4 +122,65 @@ export function joinSummary(resolved: ResolvedJoin, outcome: JoinOutcome): strin
     );
   }
   return lines.length > 0 ? lines.join("\n") : "There are no public channels left for me to join.";
+}
+
+/** Joining more channels than this says "working on it" first, since Slack allows about 50 joins a minute. */
+const SLOW_JOIN = 5;
+
+/** The channel list is a slow, rate-limited call (about 20 a minute), so the Home tab reuses it this long. */
+const CHANNEL_CACHE_MS = 60_000;
+
+export type JoinRun =
+  | { status: "not_admin" }
+  /** Another bulk join is still going; Slack's rate limit makes running two at once slower for both. */
+  | { status: "busy" }
+  | { status: "done"; resolved: ResolvedJoin; outcome: JoinOutcome };
+
+/** Bulk joins for admins and owners, one at a time, with a short-lived cache of the channel list. */
+export class ChannelJoiner {
+  private cache: { channels: Channel[]; at: number } | null = null;
+  private loading: Promise<Channel[]> | null = null;
+  private running = false;
+
+  constructor(
+    private readonly client: JoinClient,
+    private readonly now: () => number = Date.now,
+  ) {}
+
+  /** The cached list, or a new one when it's older than a minute or `fresh` is set. */
+  async channels(fresh = false): Promise<Channel[]> {
+    if (!fresh && this.cache && this.now() - this.cache.at < CHANNEL_CACHE_MS) return this.cache.channels;
+    this.loading ??= listChannels(this.client)
+      .then((channels) => {
+        this.cache = { channels, at: this.now() };
+        return channels;
+      })
+      .finally(() => {
+        this.loading = null;
+      });
+    return this.loading;
+  }
+
+  /** Joins what `request` names on behalf of `user`; `onSlowJoin` hears first when that's many channels. */
+  async run(user: string, request: JoinRequest, onSlowJoin: (count: number) => Promise<unknown>): Promise<JoinRun> {
+    if (!(await isWorkspaceAdmin(this.client, user))) return { status: "not_admin" };
+    if (this.running) return { status: "busy" };
+    this.running = true;
+    try {
+      // Fresh, so a channel created a moment ago can be named.
+      const resolved = resolveJoin(request, await this.channels(true));
+      if (resolved.toJoin.length > SLOW_JOIN) await onSlowJoin(resolved.toJoin.length);
+      const outcome = await joinChannels(this.client, resolved.toJoin);
+      this.markJoined(outcome.joined);
+      return { status: "done", resolved, outcome };
+    } finally {
+      this.running = false;
+    }
+  }
+
+  private markJoined(joined: Channel[]): void {
+    if (!this.cache) return;
+    const ids = new Set(joined.map((c) => c.id));
+    this.cache.channels = this.cache.channels.map((c) => (ids.has(c.id) ? { ...c, isMember: true } : c));
+  }
 }

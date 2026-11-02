@@ -35,14 +35,18 @@ export function homeView({ admin, channels, status, notice }: HomeDetails): type
   if (channels === null) {
     blocks.push(mrkdwn("*Channels*\nI couldn't load my channel list just now. Reopen this tab to try again."));
   } else {
-    const watching = channels.filter((c) => c.isMember);
-    const shown = watching.slice(0, LISTED_CHANNELS).map((c) => `<#${c.id}>`).join("  ");
-    const more = watching.length > LISTED_CHANNELS ? ` and ${watching.length - LISTED_CHANNELS} more` : "";
+    // Everyone can open this tab, so private channels are only counted, and only for admins.
+    const watching = channels.filter((c) => c.isMember && !c.isPrivate);
+    const privateCount = admin ? channels.filter((c) => c.isMember && c.isPrivate).length : 0;
+    const total = watching.length + privateCount;
+    const shown = watching.slice(0, LISTED_CHANNELS).map((c) => `<#${c.id}>`);
+    if (watching.length > LISTED_CHANNELS) shown.push(`and ${watching.length - LISTED_CHANNELS} more`);
+    if (privateCount > 0) shown.push(privateCount === 1 ? "plus 1 private channel" : `plus ${privateCount} private channels`);
     blocks.push(
       mrkdwn(
-        watching.length === 0
-          ? "*Channels*\nI'm not in any channels yet."
-          : `*Watching ${watching.length === 1 ? "1 channel" : `${watching.length} channels`}*\n${shown}${more}`,
+        total === 0
+          ? "*Channels*\nI'm not in any public channels yet."
+          : `*Watching ${total === 1 ? "1 channel" : `${total} channels`}*\n${shown.join("  ")}`,
       ),
     );
   }
@@ -61,7 +65,9 @@ export function homeView({ admin, channels, status, notice }: HomeDetails): type
           title: { type: "plain_text", text: "Join all public channels?" },
           text: {
             type: "mrkdwn",
-            text: `I'll join ${unjoined === 1 ? "1 more public channel" : `${unjoined} more public channels`} and start nudging there. You can remove me from any channel afterwards.`,
+            text:
+              `I'll join ${unjoined === 1 ? "1 more public channel" : `${unjoined} more public channels`} and start nudging there. ` +
+              "Slack shows a short \"joined\" notice in each one. You can remove me from any channel afterwards.",
           },
           confirm: { type: "plain_text", text: "Join them" },
           deny: { type: "plain_text", text: "Cancel" },

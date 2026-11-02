@@ -36,11 +36,11 @@ Workspace admins and owners can add it to public channels in bulk:
 
 | Where | How |
 | --- | --- |
-| The bot's **Home** tab | **Add channels…** opens Slack's channel picker; **Join all public channels** joins every one it isn't in yet. The tab also lists where the bot is watching, for everyone. |
+| The bot's **Home** tab | **Add channels…** opens Slack's channel picker; **Join all public channels** joins every one it isn't in yet. The tab also lists the public channels the bot is watching, for everyone; admins also see how many private channels it's in. |
 | `/threadpolice join #eng #design` | Joins the named public channels. |
 | `/threadpolice join all` | Joins every public channel. |
 
-Private channels can't be joined this way: Slack only lets someone inside invite a bot. Slack allows about 50 joins a minute, so joining hundreds of channels takes a few minutes; the bot reports back when it's done. It doesn't join channels created later on its own.
+Each join shows Slack's usual short "joined" notice in that channel, so **Join all** announces the bot everywhere at once. Private channels can't be joined this way: Slack only lets someone inside invite a bot. Only one bulk join runs at a time. Slack allows about 50 joins a minute, so joining hundreds of channels takes a few minutes; the bot reports back when it's done. It doesn't join channels created later on its own.
 
 ## About "Move to thread"
 
