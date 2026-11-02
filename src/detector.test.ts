@@ -43,6 +43,14 @@ describe("buildRequest", () => {
     expect(request.questions.parent.criteria.m2).toBe("Message m2 by <@UB>, 10 min earlier");
   });
 
+  it("tells the model that quick reactions and context-free details continue a message", () => {
+    const { instructions, criteria } = request.questions.is_reply;
+    expect(instructions).toContain("A short remark or reaction posted moments after a message");
+    expect(instructions).toContain("doesn't make sense on its own");
+    expect(instructions).toContain("a greeting or a question that is clear on its own does not");
+    expect(criteria?.true).toBe("It responds to, reacts to or continues one specific earlier message");
+  });
+
   it("does not depend on the order candidates are passed in", () => {
     const shuffled = buildRequest(newMessage, [candidates[2]!, candidates[0]!, candidates[1]!]);
     expect(shuffled.request).toEqual(request);
