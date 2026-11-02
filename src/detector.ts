@@ -69,10 +69,14 @@ export function buildRequest(newMessage: ChannelMessage, candidates: ChannelMess
   const request = {
     state,
     questions: {
+      // The two hints lift quick reactions ("Boom!") and context-free details ("Client code: x") over
+      // the reply threshold; the greeting / clear-question clause keeps short standalone messages out.
       is_reply: noul(
-        "Is the new message a direct response to, or continuation of, one specific earlier channel message (answering it, reacting to it, or adding follow-up detail to it) rather than a standalone message or a new topic?",
+        "Is the new message a direct response to, or continuation of, one specific earlier channel message (answering it, reacting to it, or adding follow-up detail to it) rather than a standalone message or a new topic? " +
+          "A short remark or reaction posted moments after a message, especially by the same person, reacts to that message. " +
+          "A message that doesn't make sense on its own (a bare link, a detail such as a code or number with no subject, or an exclamation) usually continues a recent message; a greeting or a question that is clear on its own does not.",
         {
-          true: "It responds to or continues one specific earlier message",
+          true: "It responds to, reacts to or continues one specific earlier message",
           false: "It is standalone, a new topic, or addressed to the whole channel",
         },
       ),
