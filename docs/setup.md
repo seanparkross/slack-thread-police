@@ -8,10 +8,14 @@ These are the steps the [agent prompt](../AGENT_SETUP.md) follows, if you'd rath
 2. **Install to Workspace**. Copy the **Bot User OAuth Token** (`xoxb-…`) from **OAuth & Permissions** into `SLACK_BOT_TOKEN`.
 3. Under **Basic Information → App-Level Tokens**, generate a token with the `connections:write` scope. Copy it (`xapp-…`) into `SLACK_APP_TOKEN`.
 4. The manifest fills in the app's name, short and long description and background colour (**Basic Information → Display Information**). Upload [`assets/icon.png`](../assets/icon.png) there as the app icon yourself, since manifests can't set one.
-5. Invite the bot to each channel it should watch: `/invite @Thread Police`. It only ever sees channels it's a member of, so removing it from a channel turns it off there.
+5. Add the bot to the channels it should watch. It only ever sees channels it's a member of, so removing it from a channel turns it off there. A workspace admin or owner can add it to public channels in bulk:
+   - open **Thread Police** in Slack's sidebar (under **Apps**) and, on its **Home** tab, click **Add channels…** to pick several at once, or **Join all public channels**; or
+   - run `/threadpolice join #eng #design #support`, or `/threadpolice join all`.
+
+   Private channels need someone in them to run `/invite @Thread Police`; anyone can also add it to a single channel that way.
 6. *Optional, so Move deletes originals:* the manifest also requests the `chat:write` user scope, so installing creates a **User OAuth Token** (`xoxp-…`) for whoever installed the app, shown on **OAuth & Permissions**. If that person is a workspace admin or owner, put it in `SLACK_USER_TOKEN`. Treat it like a password: it can post and delete as that admin.
 
-*Updating an existing app:* when a new version changes `slack-app-manifest.yml` (for example to add `/threadpolice`), paste it into your app's **App Manifest** page, save, and reinstall from **OAuth & Permissions**. Your tokens stay the same.
+*Updating an existing app:* when a new version changes `slack-app-manifest.yml` (for example, adding the Home tab and the `channels:read`, `groups:read` and `channels:join` scopes for joining channels in bulk), paste it into your app's **App Manifest** page, save, and reinstall from **OAuth & Permissions**. Your tokens stay the same.
 
 ## 2. Get a TypeSafe API key
 

@@ -18,16 +18,21 @@ display_information:
     Message content is never stored. The bot keeps only a short rolling window of recent messages in memory, for the channels it has been invited to, and forgets it on restart.
 
     *Self-hosted and open source*
-    Thread Police runs on your own infrastructure using Socket Mode, so it needs no public URL. Invite it to a channel with /invite @Thread Police to start.
+    Thread Police runs on your own infrastructure using Socket Mode, so it needs no public URL. Invite it to a channel with /invite @Thread Police to start, or, as a workspace admin, add it to many channels at once from its Home tab.
 features:
+  app_home:
+    # Shows where the bot is watching, and lets admins add it to channels in bulk.
+    home_tab_enabled: true
+    messages_tab_enabled: false
   bot_user:
     display_name: Thread Police
     always_online: true
   slash_commands:
     - command: /threadpolice
-      description: Turn Thread Police's nudges off, on, or snooze them
-      usage_hint: off | on | snooze 2h | status
-      should_escape: false
+      description: Turn nudges off, on, or snooze them; admins can add the bot to channels
+      usage_hint: off | on | snooze 2h | status | join #channel… | join all
+      # Sends #channel mentions as ids, so `join` doesn't depend on names.
+      should_escape: true
 oauth_config:
   scopes:
     bot:
@@ -40,8 +45,13 @@ oauth_config:
       - chat:write.customize
       # Look up the author's display name and avatar.
       - users:read
-      # /threadpolice off | on | snooze | status
+      # /threadpolice off | on | snooze | status | join
       - commands
+      # List channels and join public ones, for the Home tab and /threadpolice join.
+      # (Private channels still need an /invite from someone inside.)
+      - channels:read
+      - groups:read
+      - channels:join
     user:
       # Optional: lets Move delete the original, using the installing admin's token as
       # SLACK_USER_TOKEN. Harmless if you don't set that variable.
@@ -49,6 +59,7 @@ oauth_config:
 settings:
   event_subscriptions:
     bot_events:
+      - app_home_opened
       - message.channels
       - message.groups
   interactivity:

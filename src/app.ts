@@ -2,10 +2,19 @@ import type { App, BlockAction, ButtonAction, Logger, webApi } from "@slack/bolt
 import { IGNORE_ACTION, MOVE_ACTION, moveFailedMessage, movedMessage, nudgeMessage, parseMoveTarget } from "./blocks.js";
 import type { ChannelBuffer } from "./buffer.js";
 import { type Burst, BurstTracker } from "./burst.js";
-import { COMMAND, runCommand } from "./commands.js";
+import { COMMAND, parseJoin, runCommand, statusText } from "./commands.js";
 import type { UserCooldown } from "./cooldown.js";
 import type { ThreadDetector } from "./detector.js";
 import { nudgeSkipReason, type RawMessage, threadParentOf, toChannelMessage } from "./eligibility.js";
+import { ADD_CHANNELS_ACTION, homeView, JOIN_ALL_ACTION, JOIN_MODAL, joinModal, pickedChannels } from "./home.js";
+import {
+  isWorkspaceAdmin,
+  type JoinRequest,
+  joinChannels,
+  joinSummary,
+  listChannels,
+  resolveJoin,
+} from "./join.js";
 import { type DeleteClient, moveToThread } from "./move.js";
 import type { PreferenceStore } from "./preferences.js";
 import type { NudgeStats } from "./stats.js";
@@ -29,6 +38,14 @@ export interface HandlerDeps {
 const BURST_MAX_WAIT_MS = 60_000;
 /** After the nudge, later follow-ups keep joining its burst (for Move to sweep up) this long. */
 const BURST_TTL_MS = 30 * 60_000;
+
+/** Joining more channels than this says "working on it" first, since Slack allows about 50 joins a minute. */
+const SLOW_JOIN = 5;
+
+const NOT_ADMIN =
+  "Only workspace admins and owners can add me to channels in bulk. To add me to a channel you're in, run `/invite @Thread Police` there.";
+const JOIN_USAGE = `Which channels? For example \`${COMMAND} join #eng #design\`, or \`${COMMAND} join all\` for every public channel.`;
+const JOIN_FAILED = ":warning: Something went wrong adding channels. The bot's logs say why.";
 
 /** Message text never goes into logs; errors are reduced to their name and message. */
 export function describeError(error: unknown): string {
@@ -214,8 +231,101 @@ export function registerHandlers(app: App, deps: HandlerDeps): { stop(): void } 
     await respond({ delete_original: true });
   });
 
-  app.command(COMMAND, async ({ command, ack, respond, logger }) => {
+  async function publishHome(client: webApi.WebClient, user: string, notice?: string): Promise<void> {
+    const [admin, channels] = await Promise.all([
+      isWorkspaceAdmin(client, user).catch(() => false),
+      listChannels(client).catch((error: unknown) => {
+        app.logger.warn(`Couldn't list channels for the Home tab: ${describeError(error)}`);
+        return null;
+      }),
+    ]);
+    await client.views.publish({
+      user_id: user,
+      view: homeView({ admin, channels, status: statusText(prefs, user), notice }),
+    });
+  }
+
+  /** Joins the channels `request` names if `user` is an admin, and returns the report for them. */
+  async function runJoin(
+    client: webApi.WebClient,
+    user: string,
+    request: JoinRequest,
+    onSlowJoin: (count: number) => Promise<unknown>,
+  ): Promise<string> {
+    if (!(await isWorkspaceAdmin(client, user))) return NOT_ADMIN;
+    const resolved = resolveJoin(request, await listChannels(client));
+    if (resolved.toJoin.length > SLOW_JOIN) await onSlowJoin(resolved.toJoin.length);
+    const outcome = await joinChannels(client, resolved.toJoin);
+    for (const { channel, error } of outcome.failed) {
+      app.logger.warn(`Couldn't join ${channel.id}: ${describeError(error)}`);
+    }
+    if (outcome.joined.length > 0) app.logger.info(`${user} added me to ${outcome.joined.length} channel(s)`);
+    return joinSummary(resolved, outcome);
+  }
+
+  async function joinFromHome(client: webApi.WebClient, user: string, request: JoinRequest): Promise<void> {
+    try {
+      const report = await runJoin(client, user, request, (count) =>
+        publishHome(client, user, `:hourglass_flowing_sand: Joining ${count} channels. This page updates when I'm done.`),
+      );
+      await publishHome(client, user, report);
+    } catch (error) {
+      app.logger.error(`Joining channels failed: ${describeError(error)}`);
+      await publishHome(client, user, JOIN_FAILED).catch(() => {});
+    }
+  }
+
+  app.event("app_home_opened", async ({ event, client, logger }) => {
+    if (event.tab !== "home") return;
+    try {
+      await publishHome(client, event.user);
+    } catch (error) {
+      logger.warn(`Couldn't show the Home tab: ${describeError(error)}`);
+    }
+  });
+
+  app.action<BlockAction<ButtonAction>>(ADD_CHANNELS_ACTION, async ({ ack, body, client, logger }) => {
     await ack();
+    try {
+      if (await isWorkspaceAdmin(client, body.user.id)) {
+        await client.views.open({ trigger_id: body.trigger_id, view: joinModal() });
+      } else {
+        await publishHome(client, body.user.id, NOT_ADMIN);
+      }
+    } catch (error) {
+      logger.warn(`Couldn't open the channel picker: ${describeError(error)}`);
+    }
+  });
+
+  app.view(JOIN_MODAL, async ({ ack, body, view, client }) => {
+    await ack();
+    await joinFromHome(client, body.user.id, { all: false, ids: pickedChannels(view.state.values), names: [] });
+  });
+
+  app.action<BlockAction<ButtonAction>>(JOIN_ALL_ACTION, async ({ ack, body, client }) => {
+    await ack();
+    await joinFromHome(client, body.user.id, { all: true, ids: [], names: [] });
+  });
+
+  app.command(COMMAND, async ({ command, ack, respond, client, logger }) => {
+    await ack();
+    const join = parseJoin(command.text);
+    if (join) {
+      if (!join.all && join.ids.length === 0 && join.names.length === 0) {
+        await respond({ response_type: "ephemeral", text: JOIN_USAGE });
+        return;
+      }
+      try {
+        const report = await runJoin(client, command.user_id, join, (count) =>
+          respond({ response_type: "ephemeral", text: `Joining ${count} channels. I'll report back here when I'm done.` }),
+        );
+        await respond({ response_type: "ephemeral", text: report });
+      } catch (error) {
+        logger.error(`${COMMAND} join failed: ${describeError(error)}`);
+        await respond({ response_type: "ephemeral", text: JOIN_FAILED });
+      }
+      return;
+    }
     try {
       await respond({ response_type: "ephemeral", text: await runCommand(command.text, command.user_id, prefs) });
     } catch (error) {
