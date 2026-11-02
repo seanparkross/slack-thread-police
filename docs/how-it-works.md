@@ -28,6 +28,20 @@ Anyone can control their own nudges with a slash command. The reply is private.
 | `/threadpolice on` | Turn nudges back on. |
 | `/threadpolice status` | Show whether nudges are on, off or snoozed. |
 
+## Choosing channels
+
+The bot only reads channels it's in. Anyone can add it to a channel they're in with `/invite @Thread Police`, and remove it in the channel's settings under **Integrations**.
+
+Workspace admins and owners can add it to public channels in bulk:
+
+| Where | How |
+| --- | --- |
+| The bot's **Home** tab | **Add channels…** opens Slack's channel picker; **Join all public channels** joins every one it isn't in yet. The tab also lists the public channels the bot is watching, for everyone; admins also see how many private channels it's in. |
+| `/threadpolice join #eng #design` | Joins the named public channels. |
+| `/threadpolice join all` | Joins every public channel. |
+
+Each join shows Slack's usual short "joined" notice in that channel, so **Join all** announces the bot everywhere at once. Private channels can't be joined this way: Slack only lets someone inside invite a bot. Only one bulk join runs at a time. Slack allows about 50 joins a minute, so joining hundreds of channels takes a few minutes; the bot reports back when it's done. It doesn't join channels created later on its own.
+
 ## About "Move to thread"
 
 A bot token can't post as a user or delete their messages, so Move is a copy: the bot posts the message into the thread with the author's name and avatar (Slack labels it as an app message, with a small "Moved from the channel by Thread Police" line), and the nudge changes to "Moved — you can now delete your original" with a link to the copy.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseDuration, runCommand } from "./commands.js";
+import { parseDuration, parseJoin, runCommand } from "./commands.js";
 import { PreferenceStore } from "./preferences.js";
 
 const NOW = 1_700_000_000_000;
@@ -19,6 +19,26 @@ describe("parseDuration", () => {
 
   it.each(["", "soon", "2", "0h", "91d", "-1h", "1y"])("rejects %j", (text) => {
     expect(parseDuration(text)).toBeNull();
+  });
+});
+
+describe("parseJoin", () => {
+  it("reads escaped mentions, plain names and commas", () => {
+    expect(parseJoin("join <#C1|eng> #Design, support <#C2|>")).toEqual({
+      all: false,
+      ids: ["C1", "C2"],
+      names: ["design", "support"],
+    });
+  });
+
+  it("reads `join all`", () => {
+    expect(parseJoin("JOIN all")).toEqual({ all: true, ids: [], names: [] });
+  });
+
+  it("returns an empty request for a bare `join`, and null for other commands", () => {
+    expect(parseJoin(" join ")).toEqual({ all: false, ids: [], names: [] });
+    expect(parseJoin("status")).toBeNull();
+    expect(parseJoin("")).toBeNull();
   });
 });
 

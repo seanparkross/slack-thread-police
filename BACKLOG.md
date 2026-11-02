@@ -17,7 +17,7 @@ Then any change to the prompt, thresholds or model can be judged on the same tes
 
 ## Channel controls
 
-**Why.** The bot only watches channels it has been invited to, so adding or removing it is already an on/off switch per channel. What's missing is "watch this channel, but be stricter here" (a busy #general) and a way for admins to see where it's active.
+**Why.** The bot only watches channels it has been invited to, so adding or removing it is already an on/off switch per channel. What's missing is "watch this channel, but be stricter here" (a busy #general). The Home tab already lists where it's active, so per-channel settings could be shown and changed there too.
 
 **Options.** Environment variables are simplest for self-hosters (`CHANNEL_THRESHOLDS=C123:0.9`). An admin-only slash command (`/threadpolice channel strict`, checking the caller is a workspace admin) is friendlier but needs storing per-channel settings next to `preferences.json`.
 

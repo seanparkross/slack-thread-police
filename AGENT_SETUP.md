@@ -35,7 +35,8 @@ wait for my answers:
 2. Is there already a Thread Police app in that workspace? (If so, update it rather than create
    a second one. Two apps would mean two bots nudging people.)
 3. Which channels should it watch? Suggest starting with one or two. It only sees channels it's
-   invited to, public or private.
+   in. Admins can add it to many public channels at once, or all of them; private channels need
+   an invite from inside.
 4. Should "Move to thread" also delete the original messages? This needs an extra admin token
    and only works if I'm a workspace owner or admin. Without it, Move copies the message into
    the thread and tells the author to delete the original.
@@ -101,7 +102,7 @@ Print only the fields named here:
 - SLACK_BOT_TOKEN: GET https://slack.com/api/auth.test with "Authorization: Bearer <token>".
   Expect ok:true, the right team name and a user of thread_police. The response's
   x-oauth-scopes header should include channels:history, groups:history, chat:write,
-  chat:write.customize, users:read and commands.
+  chat:write.customize, users:read, commands, channels:read, groups:read and channels:join.
 - SLACK_APP_TOKEN: POST https://slack.com/api/apps.connections.open with the same header.
   Expect ok:true.
 - SLACK_USER_TOKEN, if used: auth.test gives the user_id. Then call
@@ -137,7 +138,10 @@ when the admin token is in use, and "Move keeps originals" when it isn't.
 
 ## 6. Invite the bot and test it (in my browser)
 
-1. In each channel from question 3, send `/invite @Thread Police`. For the test channel, create
+1. Add the bot to the channels from question 3. For public channels, if I'm an admin or owner,
+   send `/threadpolice join #channel-one #channel-two` (or `/threadpolice join all` if I asked
+   for every public channel) in any channel and check its reply. For private channels, and
+   if I'm not an admin, send `/invite @Thread Police` in each one. For the test channel, create
    it first if I agreed to that.
 2. In the test channel, post a question ("What time does the office close on Friday?"), wait
    a few seconds, then post a follow-up as a separate top-level message ("Asking because I need

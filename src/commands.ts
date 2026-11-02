@@ -1,3 +1,4 @@
+import type { JoinRequest } from "./join.js";
 import type { PreferenceStore } from "./preferences.js";
 
 export const COMMAND = "/threadpolice";
@@ -20,7 +21,32 @@ const HELP = [
   `• \`${COMMAND} snooze 2h\`: pause nudges for a while (m, h, d or w, up to 90 days)`,
   `• \`${COMMAND} on\`: turn nudges back on`,
   `• \`${COMMAND} status\`: check whether nudges are on`,
+  `• \`${COMMAND} join #eng #design\` or \`${COMMAND} join all\`: add me to public channels (workspace admins)`,
 ].join("\n");
+
+/** A Slack-escaped channel mention, `<#C123|eng>` (the name can be empty). */
+const CHANNEL_MENTION = /^<#([A-Z0-9]+)(?:\|[^>]*)?>$/;
+
+/** `join all` or `join #eng #design` as a request; null for every other command. */
+export function parseJoin(text: string): JoinRequest | null {
+  const [word = "", ...rest] = text.trim().split(/[\s,]+/).filter(Boolean);
+  if (word.toLowerCase() !== "join") return null;
+  const request: JoinRequest = { all: false, ids: [], names: [] };
+  for (const token of rest) {
+    const id = CHANNEL_MENTION.exec(token)?.[1];
+    if (id) request.ids.push(id);
+    else if (token.toLowerCase() === "all") request.all = true;
+    else request.names.push(token.replace(/^#/, "").toLowerCase());
+  }
+  return request;
+}
+
+/** Whether `user` is being nudged right now, as one sentence. */
+export function statusText(prefs: PreferenceStore, user: string, now = Date.now()): string {
+  const status = prefs.status(user, now);
+  if (!status.optedOut) return "Nudges are on.";
+  return status.until === null ? "Nudges are off." : `Nudges are snoozed until ${slackTime(status.until)}.`;
+}
 
 /** Runs `/threadpolice <text>` for `user` and returns the private reply. */
 export async function runCommand(text: string, user: string, prefs: PreferenceStore, now = Date.now()): Promise<string> {
@@ -38,11 +64,8 @@ export async function runCommand(text: string, user: string, prefs: PreferenceSt
       await prefs.optOut(user, now + ms);
       return `Snoozed until ${slackTime(now + ms)}. \`${COMMAND} on\` turns nudges back on sooner.`;
     }
-    case "status": {
-      const status = prefs.status(user, now);
-      if (!status.optedOut) return "Nudges are on.";
-      return status.until === null ? "Nudges are off." : `Nudges are snoozed until ${slackTime(status.until)}.`;
-    }
+    case "status":
+      return statusText(prefs, user, now);
     default:
       return HELP;
   }
