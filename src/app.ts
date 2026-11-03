@@ -10,7 +10,7 @@ import { ADD_CHANNELS_ACTION, homeView, JOIN_ALL_ACTION, JOIN_MODAL, joinModal, 
 import { ChannelJoiner, isWorkspaceAdmin, type JoinRequest, joinSummary } from "./join.js";
 import { type DeleteClient, moveToThread } from "./move.js";
 import type { PreferenceStore } from "./preferences.js";
-import type { NudgeStats } from "./stats.js";
+import type { NudgeStats, Outcome } from "./stats.js";
 
 export interface HandlerDeps {
   buffer: ChannelBuffer;
@@ -54,6 +54,13 @@ export function registerHandlers(app: App, deps: HandlerDeps): { stop(): void } 
     (burst) => void sendNudge(burst),
   );
 
+  /** Stats are best-effort: a failed save is logged, never shown to anyone. */
+  function count(channel: string, outcome: Outcome): void {
+    stats.record(channel, outcome).catch((error: unknown) => {
+      app.logger.warn(`Couldn't save stats: ${describeError(error)}`);
+    });
+  }
+
   async function sendNudge(burst: Burst): Promise<void> {
     const { channel, user, parentTs, messages } = burst;
     // Another nudge may have gone out, or they may have opted out, while this one waited.
@@ -79,7 +86,7 @@ export function registerHandlers(app: App, deps: HandlerDeps): { stop(): void } 
           { author: user, parentUser: burst.parentUser, parentText: burst.parentText, parentPermalink },
         ),
       });
-      stats.record(channel, "nudged");
+      count(channel, "nudged");
       app.logger.info(`Nudged ${user} in ${channel} about ${messages.length} message(s)`);
     } catch (error) {
       app.logger.error(`Couldn't send nudge: ${describeError(error)}`);
@@ -197,7 +204,7 @@ export function registerHandlers(app: App, deps: HandlerDeps): { stop(): void } 
         await respond({ replace_original: true, ...moveFailedMessage(result.reason) });
         return;
       }
-      stats.record(target.channel, "moved");
+      count(target.channel, "moved");
       // Bolt drops our own messages before they reach the event handler, so count the copies here.
       for (let i = 0; i < result.moved; i++) buffer.noteReply(target.channel, target.parentTs);
       for (const error of result.deleteErrors) {
@@ -217,7 +224,7 @@ export function registerHandlers(app: App, deps: HandlerDeps): { stop(): void } 
     const target = parseMoveTarget(action.value);
     if (target) {
       bursts.end(target.channel, body.user.id, target.parentTs);
-      stats.record(target.channel, "ignored");
+      count(target.channel, "ignored");
     }
     await respond({ delete_original: true });
   });
@@ -319,7 +326,8 @@ export function registerHandlers(app: App, deps: HandlerDeps): { stop(): void } 
       return;
     }
     try {
-      await respond({ response_type: "ephemeral", text: await runCommand(command.text, command.user_id, prefs) });
+      const reply = await runCommand(command.text, command.user_id, { prefs, stats });
+      await respond({ response_type: "ephemeral", text: reply });
     } catch (error) {
       logger.error(`${COMMAND} failed: ${describeError(error)}`);
       await respond({ response_type: "ephemeral", text: "Sorry, I couldn't save that. Please try again." });

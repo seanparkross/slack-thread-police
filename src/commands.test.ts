@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { parseDuration, parseJoin, runCommand } from "./commands.js";
+import { type CommandDeps, parseDuration, parseJoin, runCommand, statsText } from "./commands.js";
 import { PreferenceStore } from "./preferences.js";
+import { NudgeStats } from "./stats.js";
 
 const NOW = 1_700_000_000_000;
 const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
+
+async function inMemory(): Promise<CommandDeps> {
+  return { prefs: await PreferenceStore.load(), stats: await NudgeStats.load(undefined, NOW) };
+}
 
 describe("parseDuration", () => {
   it.each([
@@ -44,30 +50,79 @@ describe("parseJoin", () => {
 
 describe("runCommand", () => {
   it("turns nudges off, reports it, and turns them back on", async () => {
-    const prefs = await PreferenceStore.load();
-    expect(await runCommand("off", "U1", prefs, NOW)).toMatch(/won't nudge you/);
-    expect(prefs.isOptedOut("U1", NOW)).toBe(true);
-    expect(await runCommand("status", "U1", prefs, NOW)).toBe("Nudges are off.");
-    expect(await runCommand("ON", "U1", prefs, NOW)).toBe("Nudges are back on.");
-    expect(await runCommand("status", "U1", prefs, NOW)).toBe("Nudges are on.");
+    const deps = await inMemory();
+    expect(await runCommand("off", "U1", deps, NOW)).toMatch(/won't nudge you/);
+    expect(deps.prefs.isOptedOut("U1", NOW)).toBe(true);
+    expect(await runCommand("status", "U1", deps, NOW)).toBe("Nudges are off.");
+    expect(await runCommand("ON", "U1", deps, NOW)).toBe("Nudges are back on.");
+    expect(await runCommand("status", "U1", deps, NOW)).toBe("Nudges are on.");
   });
 
   it("snoozes until a time shown in the reader's timezone", async () => {
-    const prefs = await PreferenceStore.load();
-    const reply = await runCommand("snooze 2h", "U1", prefs, NOW);
+    const deps = await inMemory();
+    const reply = await runCommand("snooze 2h", "U1", deps, NOW);
     expect(reply).toContain(`<!date^${(NOW + 2 * HOUR) / 1000}^`);
-    expect(prefs.status("U1", NOW)).toEqual({ optedOut: true, until: NOW + 2 * HOUR });
-    expect(prefs.isOptedOut("U1", NOW + 2 * HOUR)).toBe(false);
+    expect(deps.prefs.status("U1", NOW)).toEqual({ optedOut: true, until: NOW + 2 * HOUR });
+    expect(deps.prefs.isOptedOut("U1", NOW + 2 * HOUR)).toBe(false);
   });
 
   it("asks how long when the snooze has no usable duration", async () => {
-    const prefs = await PreferenceStore.load();
-    expect(await runCommand("snooze", "U1", prefs, NOW)).toMatch(/How long for\?/);
-    expect(prefs.isOptedOut("U1", NOW)).toBe(false);
+    const deps = await inMemory();
+    expect(await runCommand("snooze", "U1", deps, NOW)).toMatch(/How long for\?/);
+    expect(deps.prefs.isOptedOut("U1", NOW)).toBe(false);
+  });
+
+  it("reports stats", async () => {
+    const deps = await inMemory();
+    await deps.stats.record("C1", "nudged", NOW);
+    expect(await runCommand("Stats", "U1", deps, NOW)).toContain("Last 7 days: 1 nudge: 0 moved (0%)");
   });
 
   it.each(["", "help", "banana"])("shows help for %j", async (text) => {
-    const prefs = await PreferenceStore.load();
-    expect(await runCommand(text, "U1", prefs, NOW)).toMatch(/\/threadpolice off/);
+    expect(await runCommand(text, "U1", await inMemory(), NOW)).toMatch(/\/threadpolice off/);
+  });
+});
+
+describe("statsText", () => {
+  it("says when there's nothing to report yet", async () => {
+    const stats = await NudgeStats.load(undefined, NOW);
+    expect(statsText(stats, NOW)).toMatch(/^No nudges yet\. I've been counting since <!date\^/);
+  });
+
+  it("totals the last 7 days, the last 30 and all time, then each channel", async () => {
+    const stats = await NudgeStats.load(undefined, NOW - 60 * DAY);
+    await stats.record("C1", "nudged", NOW - 40 * DAY);
+    for (let i = 0; i < 4; i++) await stats.record("C1", "nudged", NOW - 10 * DAY);
+    await stats.record("C1", "moved", NOW - 10 * DAY);
+    await stats.record("C2", "nudged", NOW);
+    await stats.record("C2", "moved", NOW);
+    expect(statsText(stats, NOW).split("\n").slice(1)).toEqual([
+      "• Last 7 days: 1 nudge: 1 moved (100%), 0 ignored (0%), 0 unanswered",
+      "• Last 30 days: 5 nudges: 2 moved (40%), 0 ignored (0%), 3 unanswered",
+      "• All time: 6 nudges: 2 moved (33%), 0 ignored (0%), 4 unanswered",
+      "",
+      "*By channel, last 30 days*",
+      "• <#C1>: 4 nudges: 1 moved (25%), 0 ignored (0%), 3 unanswered",
+      "• <#C2>: 1 nudge: 1 moved (100%), 0 ignored (0%), 0 unanswered",
+    ]);
+  });
+
+  it("flags channels where most nudges are ignored", async () => {
+    const stats = await NudgeStats.load(undefined, NOW);
+    for (let i = 0; i < 6; i++) await stats.record("C1", "nudged", NOW);
+    for (let i = 0; i < 4; i++) await stats.record("C1", "ignored", NOW);
+    expect(statsText(stats, NOW)).toContain("<#C1>: 6 nudges: 0 moved (0%), 4 ignored (67%), 2 unanswered _Mostly ignored");
+  });
+
+  it("lists the ten most nudged channels", async () => {
+    const stats = await NudgeStats.load(undefined, NOW);
+    for (let c = 1; c <= 12; c++) {
+      for (let i = 0; i < c; i++) await stats.record(`C${c}`, "nudged", NOW);
+    }
+    const text = statsText(stats, NOW);
+    expect(text).toContain("• <#C12>: 12 nudges");
+    expect(text).toContain("• <#C3>: 3 nudges");
+    expect(text).not.toContain("<#C2>");
+    expect(text).toMatch(/…and 2 more$/);
   });
 });

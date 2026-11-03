@@ -1,5 +1,6 @@
 import type { JoinRequest } from "./join.js";
 import type { PreferenceStore } from "./preferences.js";
+import { type Counts, mostlyIgnored, type NudgeStats } from "./stats.js";
 
 export const COMMAND = "/threadpolice";
 
@@ -21,6 +22,7 @@ const HELP = [
   `• \`${COMMAND} snooze 2h\`: pause nudges for a while (m, h, d or w, up to 90 days)`,
   `• \`${COMMAND} on\`: turn nudges back on`,
   `• \`${COMMAND} status\`: check whether nudges are on`,
+  `• \`${COMMAND} stats\`: how many nudges went out, and how many were moved or ignored`,
   `• \`${COMMAND} join #eng #design\` or \`${COMMAND} join all\`: add me to public channels (workspace admins)`,
 ].join("\n");
 
@@ -48,8 +50,52 @@ export function statusText(prefs: PreferenceStore, user: string, now = Date.now(
   return status.until === null ? "Nudges are off." : `Nudges are snoozed until ${slackTime(status.until)}.`;
 }
 
+/** Most channels listed by `/threadpolice stats`. */
+const MAX_STATS_CHANNELS = 10;
+
+/** Workspace-wide nudge counts for the last 7 and 30 days and all time, then the most nudged channels. */
+export function statsText(stats: NudgeStats, now = Date.now()): string {
+  const { since, week, month, total, channels } = stats.summary(now);
+  if (total.nudged === 0) return `No nudges yet. I've been counting since ${slackDate(since)}.`;
+  const lines = [
+    `*Nudges* (counting since ${slackDate(since)})`,
+    `• Last 7 days: ${countsText(week)}`,
+    `• Last 30 days: ${countsText(month)}`,
+    `• All time: ${countsText(total)}`,
+  ];
+  if (channels.length > 0) {
+    lines.push("", "*By channel, last 30 days*");
+    for (const [channel, counts] of channels.slice(0, MAX_STATS_CHANNELS)) {
+      const hint = mostlyIgnored(counts) ? " _Mostly ignored: an admin could raise `REPLY_THRESHOLD`._" : "";
+      lines.push(`• <#${channel}>: ${countsText(counts)}${hint}`);
+    }
+    const more = channels.length - MAX_STATS_CHANNELS;
+    if (more > 0) lines.push(`• …and ${more} more`);
+  }
+  return lines.join("\n");
+}
+
+/** "12 nudges: 5 moved (42%), 2 ignored (17%), 5 unanswered". */
+function countsText({ nudged, moved, ignored }: Counts): string {
+  // A nudge sent just before a window can be answered inside it, so shares can't be exact.
+  const share = (count: number) => (nudged > 0 ? ` (${Math.min(100, Math.round((100 * count) / nudged))}%)` : "");
+  const unanswered = Math.max(0, nudged - moved - ignored);
+  const noun = nudged === 1 ? "nudge" : "nudges";
+  return `${nudged} ${noun}: ${moved} moved${share(moved)}, ${ignored} ignored${share(ignored)}, ${unanswered} unanswered`;
+}
+
+export interface CommandDeps {
+  prefs: PreferenceStore;
+  stats: NudgeStats;
+}
+
 /** Runs `/threadpolice <text>` for `user` and returns the private reply. */
-export async function runCommand(text: string, user: string, prefs: PreferenceStore, now = Date.now()): Promise<string> {
+export async function runCommand(
+  text: string,
+  user: string,
+  { prefs, stats }: CommandDeps,
+  now = Date.now(),
+): Promise<string> {
   const [word = "", ...rest] = text.trim().split(/\s+/);
   switch (word.toLowerCase()) {
     case "off":
@@ -66,6 +112,8 @@ export async function runCommand(text: string, user: string, prefs: PreferenceSt
     }
     case "status":
       return statusText(prefs, user, now);
+    case "stats":
+      return statsText(stats, now);
     default:
       return HELP;
   }
@@ -74,4 +122,8 @@ export async function runCommand(text: string, user: string, prefs: PreferenceSt
 /** Renders in each reader's own timezone. */
 function slackTime(ms: number): string {
   return `<!date^${Math.floor(ms / 1000)}^{date_short_pretty} at {time}|${new Date(ms).toISOString()}>`;
+}
+
+function slackDate(ms: number): string {
+  return `<!date^${Math.floor(ms / 1000)}^{date_short_pretty}|${new Date(ms).toISOString().slice(0, 10)}>`;
 }

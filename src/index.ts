@@ -34,7 +34,7 @@ const app = new App({
   logLevel: BOLT_LOG_LEVELS[config.logLevel],
 });
 
-const stats = new NudgeStats();
+const stats = await NudgeStats.load(path.join(config.dataDir, "stats.json"));
 const handlers = registerHandlers(app, {
   buffer: new ChannelBuffer(config.detection.contextMessages, config.detection.contextMaxAgeMs),
   detector: new ThreadDetector(createDecisionClient(config), config.detection),

@@ -18,7 +18,7 @@ All settings are environment variables, read from `.env` (or the server's env fi
 | `CONTEXT_MAX_AGE_MINUTES` | `120` | Ignore messages older than this. |
 | `USER_COOLDOWN_MINUTES` | `10` | At most one nudge per person in this window. `0` disables it. |
 | `NUDGE_DELAY_SECONDS` | `0` | Nudge right away (`0`), or wait this long after someone's last follow-up so a burst gets one nudge that counts it (0–120). |
-| `DATA_DIR` | `data` | Where `/threadpolice` opt-outs and snoozes are saved. Docker Compose keeps it in a named volume. |
+| `DATA_DIR` | `data` | Where `/threadpolice` opt-outs and snoozes (`preferences.json`) and nudge counts for `/threadpolice stats` (`stats.json`) are saved. Docker Compose keeps it in a named volume. |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error`. |
 
 Raise the thresholds if nudges feel too eager; lower them if obvious replies slip through.

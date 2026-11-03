@@ -20,18 +20,19 @@ Slack Thread Police: a self-hosted Slack bot (Bolt, Socket Mode) that privately 
 - `decision.ts` — `TypeSafeClient` construction
 - `burst.ts` — `BurstTracker`: groups a person's follow-ups to one message under one nudge (sent at once, or after `NUDGE_DELAY_SECONDS` of quiet) and keeps collecting them for Move
 - `cooldown.ts` — per-user nudge cooldown
-- `commands.ts` — `/threadpolice off | on | snooze <duration> | status`, and parsing `join #channel… | join all`
+- `commands.ts` — `/threadpolice off | on | snooze <duration> | status | stats`, and parsing `join #channel… | join all`
 - `join.ts` — admin check, channel listing and bulk `conversations.join`; `ChannelJoiner` caches the channel list for a minute and runs one bulk join at a time, for the Home tab and `/threadpolice join` (admins and owners only; public channels only)
 - `home.ts` — Block Kit for the Home tab (where the bot is watching, Add channels / Join all) and the channel-picker modal
 - `preferences.ts` — `PreferenceStore`, the opt-outs saved to `DATA_DIR/preferences.json`
-- `stats.ts` — per-channel nudge/move/ignore counts, logged hourly
+- `stats.ts` — `NudgeStats`: per-channel nudge/move/ignore counts, logged hourly and kept by day in `DATA_DIR/stats.json` for `/threadpolice stats`
+- `jsonfile.ts` — `JsonFile`, the queued atomic writes behind both `DATA_DIR` files
 - `blocks.ts` — Block Kit for the nudge and its replacements; button values carry ids only
 - `move.ts` — copy-based move (repost into the thread as the author via `chat:write.customize`), then delete the original when an admin `SLACK_USER_TOKEN` is configured
 
 ## Conventions
 
 - The optional admin user token is used only for `chat.delete` in `move.ts`; don't widen its use.
-- **Never persist or log message content.** State lives in memory, except `preferences.json`, which holds user ids and times only. Log ids, reasons and probabilities, not text. Errors go through `describeError`.
+- **Never persist or log message content.** State lives in memory, except `preferences.json` (user ids and times only) and `stats.json` (channel ids and counts only). Log ids, reasons and probabilities, not text. Errors go through `describeError`.
 - Keep Slack API calls in `app.ts` / `move.ts` / `join.ts`; keep everything else pure and unit-tested with fakes (see `*.test.ts` next to each module).
 - Model calls failing must never surface to users: log and stay silent.
 - Choice options are listed newest first because Jev leans toward the first option; keep that when changing the prompt.

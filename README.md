@@ -56,7 +56,7 @@ Prefer to do it yourself? Follow the [manual setup](docs/setup.md).
 ## Privacy
 
 - **Message content is never persisted.** The bot keeps a small rolling window of recent top-level messages per channel in memory, and only for channels it has been invited to. A restart forgets everything.
-- The only file it writes is `DATA_DIR/preferences.json`: the user ids of people who turned nudges off or snoozed them, and until when.
+- It writes two files to `DATA_DIR`: `preferences.json`, the user ids of people who turned nudges off or snoozed them and until when; and `stats.json`, how many nudges each channel got and how many were moved or ignored (channel ids and numbers only, not who was nudged).
 - To decide whether a message is a reply, the bot sends the new message and the recent window to the decision model ([TypeSafe](https://typesafe.ai)'s hosted Jev by default, or [a model you host yourself](docs/configuration.md#self-hosting-the-model)). Nothing else leaves your infrastructure.
 - Logs never include message text at the default `LOG_LEVEL=info`; they show message ids, probabilities and counts. At `LOG_LEVEL=debug`, Slack's Bolt SDK logs raw event payloads, which do include message text.
 - Nudge buttons carry only message ids, never content.

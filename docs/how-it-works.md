@@ -17,6 +17,12 @@ If the model is unreachable or errors, the bot logs it and stays silent.
 
 Every check is logged with its probabilities (ids only), and once an hour the bot logs how many nudges each channel got and how many were moved or ignored, flagging channels where most nudges are ignored.
 
+## Stats
+
+`/threadpolice stats` shows anyone, privately, how the bot is doing across the workspace: how many nudges went out in the last 7 days, the last 30 days and all time, and how many of those were moved to a thread, ignored or left unanswered. Below that it lists the ten most nudged channels over the last 30 days, flagging any where most nudges are ignored (a sign `REPLY_THRESHOLD` is too low there).
+
+The counts are kept in `DATA_DIR/stats.json` as channel ids and numbers, never who was nudged or what they wrote. Daily counts older than 30 days are dropped; the all-time totals keep them. Counting starts the first time a version with stats runs.
+
 ## Turning nudges off
 
 Anyone can control their own nudges with a slash command. The reply is private.
@@ -27,6 +33,7 @@ Anyone can control their own nudges with a slash command. The reply is private.
 | `/threadpolice snooze 2h` | Pause for a while: minutes, hours, days or weeks (`30m`, `2h`, `3d`, `1w`), up to 90 days. |
 | `/threadpolice on` | Turn nudges back on. |
 | `/threadpolice status` | Show whether nudges are on, off or snoozed. |
+| `/threadpolice stats` | Show how many nudges went out and what people did with them ([Stats](#stats)). |
 
 ## Choosing channels
 

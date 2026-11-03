@@ -14,7 +14,8 @@ DynamicUser=yes
 WorkingDirectory=/opt/slack-thread-police
 # Root-owned, chmod 600. systemd reads it before dropping privileges.
 EnvironmentFile=/etc/slack-thread-police/env
-# The only thing the bot writes: /threadpolice opt-outs (user ids and times, never messages).
+# The only things the bot writes: /threadpolice opt-outs (user ids and times) and nudge counts
+# (channel ids and numbers), never messages.
 StateDirectory=slack-thread-police
 Environment=DATA_DIR=/var/lib/slack-thread-police
 Environment=NODE_ENV=production
