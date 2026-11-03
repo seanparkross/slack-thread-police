@@ -33,7 +33,8 @@ Anyone can control their own nudges with a slash command. The reply is private.
 | `/threadpolice snooze 2h` | Pause for a while: minutes, hours, days or weeks (`30m`, `2h`, `3d`, `1w`), up to 90 days. |
 | `/threadpolice on` | Turn nudges back on. |
 | `/threadpolice status` | Show whether nudges are on, off or snoozed. |
-| `/threadpolice stats` | Show how many nudges went out and what people did with them ([Stats](#stats)). |
+
+`/threadpolice` on its own, `/threadpolice help`, or anything it doesn't recognise replies with every command, including [`stats`](#stats) and the admin-only [`join`](#choosing-channels).
 
 ## Choosing channels
 
