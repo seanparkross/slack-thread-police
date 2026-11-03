@@ -15,7 +15,7 @@ These are the steps the [agent prompt](../AGENT_SETUP.md) follows, if you'd rath
    Private channels need someone in them to run `/invite @Thread Police`; anyone can also add it to a single channel that way.
 6. *Optional, so Move deletes originals:* the manifest also requests the `chat:write` user scope, so installing creates a **User OAuth Token** (`xoxp-…`) for whoever installed the app, shown on **OAuth & Permissions**. If that person is a workspace admin or owner, put it in `SLACK_USER_TOKEN`. Treat it like a password: it can post and delete as that admin.
 
-*Updating an existing app:* when a new version changes `slack-app-manifest.yml` (for example, adding the Home tab and the `channels:read`, `groups:read` and `channels:join` scopes for joining channels in bulk), paste it into your app's **App Manifest** page, save, and reinstall from **OAuth & Permissions**. Your tokens stay the same.
+*Updating an existing app:* when a new version changes `slack-app-manifest.yml` (for example, adding the Home tab and the `channels:read`, `groups:read` and `channels:join` scopes for joining channels in bulk), paste it into your app's **App Manifest** page, save, and reinstall from **OAuth & Permissions**. Your tokens stay the same. New `/threadpolice` subcommands (like `stats`) work without this; updating the manifest only refreshes the hint Slack shows as you type.
 
 ## 2. Get a TypeSafe API key
 

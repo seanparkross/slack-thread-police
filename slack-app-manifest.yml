@@ -29,8 +29,8 @@ features:
     always_online: true
   slash_commands:
     - command: /threadpolice
-      description: Turn nudges off, on, or snooze them; admins can add the bot to channels
-      usage_hint: off | on | snooze 2h | status | join #channel… | join all
+      description: Turn nudges off, on, or snooze them, see stats; admins can add the bot to channels
+      usage_hint: off | on | snooze 2h | status | stats | join #channel… | join all
       # Sends #channel mentions as ids, so `join` doesn't depend on names.
       should_escape: true
 oauth_config:
@@ -45,7 +45,7 @@ oauth_config:
       - chat:write.customize
       # Look up the author's display name and avatar.
       - users:read
-      # /threadpolice off | on | snooze | status | join
+      # /threadpolice off | on | snooze | status | stats | join
       - commands
       # List channels and join public ones, for the Home tab and /threadpolice join.
       # (Private channels still need an /invite from someone inside.)

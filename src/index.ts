@@ -1,6 +1,6 @@
 import path from "node:path";
 import { App, LogLevel, webApi } from "@slack/bolt";
-import { registerHandlers } from "./app.js";
+import { describeError, registerHandlers } from "./app.js";
 import { ChannelBuffer } from "./buffer.js";
 import { ConfigError, type Config, type LogLevelName, loadConfig } from "./config.js";
 import { UserCooldown } from "./cooldown.js";
@@ -34,7 +34,9 @@ const app = new App({
   logLevel: BOLT_LOG_LEVELS[config.logLevel],
 });
 
-const stats = new NudgeStats();
+const stats = await NudgeStats.load(path.join(config.dataDir, "stats.json"), Date.now(), (message, error) =>
+  app.logger.warn(error === undefined ? message : `${message}: ${describeError(error)}`),
+);
 const handlers = registerHandlers(app, {
   buffer: new ChannelBuffer(config.detection.contextMessages, config.detection.contextMaxAgeMs),
   detector: new ThreadDetector(createDecisionClient(config), config.detection),

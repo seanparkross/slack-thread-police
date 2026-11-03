@@ -1,36 +1,29 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { z } from "zod";
+import { JsonFile } from "./jsonfile.js";
 
 const FileSchema = z.object({ optOuts: z.record(z.string(), z.number().nullable()) });
 
 export type NudgeStatus = { optedOut: false } | { optedOut: true; until: number | null };
 
 /**
- * Who has turned nudges off, and until when (`null` means until they turn them back on). This is
- * the only thing the bot writes to disk, and it holds user ids and times, never message content.
+ * Who has turned nudges off, and until when (`null` means until they turn them back on). Saved as
+ * user ids and times, never message content.
  */
 export class PreferenceStore {
-  #saving: Promise<void> = Promise.resolve();
-
   private constructor(
-    private readonly file: string | undefined,
+    private readonly file: JsonFile | undefined,
     private readonly optOuts: Map<string, number | null>,
   ) {}
 
   /** Reads `file` if it exists. Without a file, preferences live in memory only. */
   static async load(file?: string): Promise<PreferenceStore> {
     if (!file) return new PreferenceStore(undefined, new Map());
-    let raw: string;
-    try {
-      raw = await readFile(file, "utf8");
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return new PreferenceStore(file, new Map());
-      throw error;
-    }
-    const parsed = FileSchema.safeParse(JSON.parse(raw));
+    const json = new JsonFile(file);
+    const data = await json.read();
+    if (data === undefined) return new PreferenceStore(json, new Map());
+    const parsed = FileSchema.safeParse(data);
     if (!parsed.success) throw new Error(`${file} isn't a valid preferences file; fix or delete it.`);
-    return new PreferenceStore(file, new Map(Object.entries(parsed.data.optOuts)));
+    return new PreferenceStore(json, new Map(Object.entries(parsed.data.optOuts)));
   }
 
   status(user: string, now = Date.now()): NudgeStatus {
@@ -57,19 +50,7 @@ export class PreferenceStore {
     return this.#save();
   }
 
-  /** Writes are queued and atomic (temp file + rename), so a crash never leaves half a file. */
   #save(): Promise<void> {
-    const file = this.file;
-    if (!file) return Promise.resolve();
-    const data = `${JSON.stringify({ optOuts: Object.fromEntries(this.optOuts) }, null, 2)}\n`;
-    this.#saving = this.#saving
-      .catch(() => {})
-      .then(async () => {
-        await mkdir(path.dirname(file), { recursive: true });
-        const temp = `${file}.tmp`;
-        await writeFile(temp, data);
-        await rename(temp, file);
-      });
-    return this.#saving;
+    return this.file?.write({ optOuts: Object.fromEntries(this.optOuts) }) ?? Promise.resolve();
   }
 }
