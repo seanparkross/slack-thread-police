@@ -45,13 +45,30 @@ Here's what it looks like in Slack once a follow-up has been moved:
 
 The channel stays easy to scan: each question keeps its context, and the back-and-forth happens in its thread. Thread replies only notify the people taking part, so the rest of the channel isn't marked unread or pinged for every follow-up. And because each nudge is a quiet, private reminder, people soon pick up the habit and start threading on their own.
 
-## Set it up with your AI agent
+## AI agent setup
 
 Each workspace runs its own copy: you create a Slack app from the included manifest and run the bot on your own computer or server, with Docker or plain Node. It connects to Slack using Socket Mode, so it needs no public URL.
 
 If you use an agent that can drive your browser and a shell (for example Claude Code with Claude in Chrome), paste the prompt from [`AGENT_SETUP.md`](AGENT_SETUP.md) into it. It asks you a few questions, creates the Slack app, collects the keys from your browser into a locked-down env file, starts the bot locally or on your server, and tests it.
 
 Prefer to do it yourself? Follow the [manual setup](docs/setup.md).
+
+## Commands
+
+Replies are private, so only you see them. `/threadpolice` on its own, or `/threadpolice help`, lists them all.
+
+| Command | What it does |
+| --- | --- |
+| `/invite @Thread Police` | Add the bot to the current channel. It only reads channels it's in. |
+| `/threadpolice off` | Stop nudging me. |
+| `/threadpolice snooze 2h` | Pause nudges for a while: minutes, hours, days or weeks (`30m`, `2h`, `3d`, `1w`), up to 90 days. |
+| `/threadpolice on` | Turn nudges back on. |
+| `/threadpolice status` | Show whether nudges are on, off or snoozed. |
+| `/threadpolice stats` | How many nudges went out in the last 7 days, 30 days and all time, how many were moved or ignored, and the most nudged channels. |
+| `/threadpolice join #eng #design` | Admins and owners: add the bot to these public channels. |
+| `/threadpolice join all` | Admins and owners: add the bot to every public channel. |
+
+Admins can also add channels from the bot's **Home** tab. See [How it works](docs/how-it-works.md) for the details.
 
 ## Privacy
 
