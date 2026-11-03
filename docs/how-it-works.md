@@ -19,9 +19,9 @@ Every check is logged with its probabilities (ids only), and once an hour the bo
 
 ## Stats
 
-`/threadpolice stats` shows anyone, privately, how the bot is doing across the workspace: how many nudges went out in the last 7 days, the last 30 days and all time, and how many of those were moved to a thread, ignored or left unanswered. Below that it lists the ten most nudged channels over the last 30 days, flagging any where most nudges are ignored (a sign `REPLY_THRESHOLD` is too low there).
+`/threadpolice stats` shows anyone, privately, how the bot is doing across the workspace: how many nudges went out in the last 7 days, the last 30 days and all time, and how many of those were moved to a thread, ignored or left unanswered. Below that it lists the ten most nudged channels over the last 30 days, flagging any where most nudges are ignored (a sign `REPLY_THRESHOLD` is too low there). As on the Home tab, only workspace admins and owners see private channels in that list; everyone else sees public channels only. The totals above it cover every channel.
 
-The counts are kept in `DATA_DIR/stats.json` as channel ids and numbers, never who was nudged or what they wrote. Daily counts older than 30 days are dropped; the all-time totals keep them. Counting starts the first time a version with stats runs.
+The counts are kept in `DATA_DIR/stats.json` as channel ids and numbers, never who was nudged or what they wrote. Daily counts older than 30 days are dropped; the all-time totals keep them. Counting starts the first time a version with stats runs. If the file can't be read, the bot renames it to `stats.json.corrupt`, logs a warning and starts counting afresh rather than refusing to start.
 
 ## Turning nudges off
 

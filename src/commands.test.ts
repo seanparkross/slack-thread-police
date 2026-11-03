@@ -8,8 +8,14 @@ const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
 async function inMemory(): Promise<CommandDeps> {
-  return { prefs: await PreferenceStore.load(), stats: await NudgeStats.load(undefined, NOW) };
+  return {
+    prefs: await PreferenceStore.load(),
+    stats: await NudgeStats.load(undefined, NOW),
+    statsVisibility: async () => everyChannel,
+  };
 }
+
+const everyChannel = () => true;
 
 describe("parseDuration", () => {
   it.each([
@@ -72,10 +78,20 @@ describe("runCommand", () => {
     expect(deps.prefs.isOptedOut("U1", NOW)).toBe(false);
   });
 
-  it("reports stats", async () => {
+  it("reports stats, listing only the channels the caller may see", async () => {
     const deps = await inMemory();
+    const asked: string[] = [];
+    deps.statsVisibility = async (user) => {
+      asked.push(user);
+      return (channel) => channel === "C1";
+    };
     await deps.stats.record("C1", "nudged", NOW);
-    expect(await runCommand("Stats", "U1", deps, NOW)).toContain("Last 7 days: 1 nudge: 0 moved (0%)");
+    await deps.stats.record("C2", "nudged", NOW);
+    const reply = await runCommand("Stats", "U1", deps, NOW);
+    expect(asked).toEqual(["U1"]);
+    expect(reply).toContain("Last 7 days: 2 nudges: 0 moved (0%)");
+    expect(reply).toContain("<#C1>");
+    expect(reply).not.toContain("<#C2>");
   });
 
   it.each(["", "help", "banana"])("shows help for %j", async (text) => {
@@ -86,7 +102,21 @@ describe("runCommand", () => {
 describe("statsText", () => {
   it("says when there's nothing to report yet", async () => {
     const stats = await NudgeStats.load(undefined, NOW);
-    expect(statsText(stats, NOW)).toMatch(/^No nudges yet\. I've been counting since <!date\^/);
+    expect(statsText(stats, everyChannel, NOW)).toMatch(/^No nudges yet\. I've been counting since <!date\^/);
+  });
+
+  it("counts moves and ignores as activity even without nudges", async () => {
+    const stats = await NudgeStats.load(undefined, NOW);
+    await stats.record("C1", "moved", NOW);
+    expect(statsText(stats, everyChannel, NOW)).toContain("Last 7 days: 0 nudges: 1 moved, 0 ignored, 0 unanswered");
+  });
+
+  it("leaves out the channel list when the reader can't see any of the channels", async () => {
+    const stats = await NudgeStats.load(undefined, NOW);
+    await stats.record("C1", "nudged", NOW);
+    const text = statsText(stats, () => false, NOW);
+    expect(text).toContain("Last 7 days: 1 nudge");
+    expect(text).not.toContain("By channel");
   });
 
   it("totals the last 7 days, the last 30 and all time, then each channel", async () => {
@@ -96,7 +126,7 @@ describe("statsText", () => {
     await stats.record("C1", "moved", NOW - 10 * DAY);
     await stats.record("C2", "nudged", NOW);
     await stats.record("C2", "moved", NOW);
-    expect(statsText(stats, NOW).split("\n").slice(1)).toEqual([
+    expect(statsText(stats, everyChannel, NOW).split("\n").slice(1)).toEqual([
       "• Last 7 days: 1 nudge: 1 moved (100%), 0 ignored (0%), 0 unanswered",
       "• Last 30 days: 5 nudges: 2 moved (40%), 0 ignored (0%), 3 unanswered",
       "• All time: 6 nudges: 2 moved (33%), 0 ignored (0%), 4 unanswered",
@@ -111,7 +141,7 @@ describe("statsText", () => {
     const stats = await NudgeStats.load(undefined, NOW);
     for (let i = 0; i < 6; i++) await stats.record("C1", "nudged", NOW);
     for (let i = 0; i < 4; i++) await stats.record("C1", "ignored", NOW);
-    expect(statsText(stats, NOW)).toContain("<#C1>: 6 nudges: 0 moved (0%), 4 ignored (67%), 2 unanswered _Mostly ignored");
+    expect(statsText(stats, everyChannel, NOW)).toContain("<#C1>: 6 nudges: 0 moved (0%), 4 ignored (67%), 2 unanswered _Mostly ignored");
   });
 
   it("lists the ten most nudged channels", async () => {
@@ -119,7 +149,7 @@ describe("statsText", () => {
     for (let c = 1; c <= 12; c++) {
       for (let i = 0; i < c; i++) await stats.record(`C${c}`, "nudged", NOW);
     }
-    const text = statsText(stats, NOW);
+    const text = statsText(stats, everyChannel, NOW);
     expect(text).toContain("• <#C12>: 12 nudges");
     expect(text).toContain("• <#C3>: 3 nudges");
     expect(text).not.toContain("<#C2>");

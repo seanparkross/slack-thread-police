@@ -7,7 +7,7 @@ import type { UserCooldown } from "./cooldown.js";
 import type { ThreadDetector } from "./detector.js";
 import { nudgeSkipReason, type RawMessage, threadParentOf, toChannelMessage } from "./eligibility.js";
 import { ADD_CHANNELS_ACTION, homeView, JOIN_ALL_ACTION, JOIN_MODAL, joinModal, pickedChannels } from "./home.js";
-import { ChannelJoiner, isWorkspaceAdmin, type JoinRequest, joinSummary } from "./join.js";
+import { type Channel, ChannelJoiner, isWorkspaceAdmin, type JoinRequest, joinSummary } from "./join.js";
 import { type DeleteClient, moveToThread } from "./move.js";
 import type { PreferenceStore } from "./preferences.js";
 import type { NudgeStats, Outcome } from "./stats.js";
@@ -231,17 +231,30 @@ export function registerHandlers(app: App, deps: HandlerDeps): { stop(): void } 
 
   const joiner = new ChannelJoiner(app.client);
 
-  async function publishHome(client: webApi.WebClient, user: string, notice?: string): Promise<void> {
-    const [admin, channels] = await Promise.all([
-      isWorkspaceAdmin(client, user).catch((error: unknown) => {
+  /** Whether `user` is an admin (false if unsure) and the channels the bot can see (null if unavailable). */
+  async function adminAndChannels(user: string): Promise<[boolean, Channel[] | null]> {
+    return Promise.all([
+      isWorkspaceAdmin(app.client, user).catch((error: unknown) => {
         app.logger.warn(`Couldn't check whether ${user} is an admin: ${describeError(error)}`);
         return false;
       }),
       joiner.channels().catch((error: unknown) => {
-        app.logger.warn(`Couldn't list channels for the Home tab: ${describeError(error)}`);
+        app.logger.warn(`Couldn't list channels: ${describeError(error)}`);
         return null;
       }),
     ]);
+  }
+
+  /** As on the Home tab, only admins see private channels; everyone else sees the public ones. */
+  async function statsVisibility(user: string): Promise<(channel: string) => boolean> {
+    const [admin, channels] = await adminAndChannels(user);
+    if (admin) return () => true;
+    const open = new Set(channels?.filter((c) => !c.isPrivate).map((c) => c.id));
+    return (channel) => open.has(channel);
+  }
+
+  async function publishHome(client: webApi.WebClient, user: string, notice?: string): Promise<void> {
+    const [admin, channels] = await adminAndChannels(user);
     await client.views.publish({
       user_id: user,
       view: homeView({ admin, channels, status: statusText(prefs, user), notice }),
@@ -326,7 +339,7 @@ export function registerHandlers(app: App, deps: HandlerDeps): { stop(): void } 
       return;
     }
     try {
-      const reply = await runCommand(command.text, command.user_id, { prefs, stats });
+      const reply = await runCommand(command.text, command.user_id, { prefs, stats, statsVisibility });
       await respond({ response_type: "ephemeral", text: reply });
     } catch (error) {
       logger.error(`${COMMAND} failed: ${describeError(error)}`);

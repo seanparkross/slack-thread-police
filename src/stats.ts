@@ -47,16 +47,33 @@ export class NudgeStats {
     private readonly history: History,
   ) {}
 
-  /** Reads `file` if it exists. Without a file, counts live in memory only. */
-  static async load(file?: string, now = Date.now()): Promise<NudgeStats> {
+  /**
+   * Reads `file` if it exists. Without a file, counts live in memory only. Counts aren't worth
+   * stopping the bot over: an unreadable file is set aside and counting starts afresh, with a warning.
+   */
+  static async load(
+    file?: string,
+    now = Date.now(),
+    warn: (message: string, error?: unknown) => void = () => {},
+  ): Promise<NudgeStats> {
     const empty: History = { since: now, total: zero(), days: {} };
     if (!file) return new NudgeStats(undefined, empty);
     const json = new JsonFile(file);
-    const data = await json.read();
-    if (data === undefined) return new NudgeStats(json, empty);
-    const parsed = FileSchema.safeParse(data);
-    if (!parsed.success) throw new Error(`${file} isn't a valid stats file; fix or delete it.`);
-    return new NudgeStats(json, parsed.data);
+    let data: unknown;
+    try {
+      data = await json.read();
+    } catch (error) {
+      if (!(error instanceof SyntaxError)) throw error;
+      data = null;
+    }
+    if (data !== undefined) {
+      const parsed = FileSchema.safeParse(data);
+      if (parsed.success) return new NudgeStats(json, parsed.data);
+      warn(`${file} isn't a valid stats file; moved it to ${await json.setAside()} and started counting afresh.`);
+    }
+    // Saved straight away, so the start date survives restarts before the first nudge.
+    await json.write(empty).catch((error: unknown) => warn(`Couldn't save ${file}`, error));
+    return new NudgeStats(json, empty);
   }
 
   /** Counts straight away; the returned promise is the save, which only rejects if the file can't be written. */

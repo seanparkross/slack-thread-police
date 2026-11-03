@@ -53,10 +53,17 @@ export function statusText(prefs: PreferenceStore, user: string, now = Date.now(
 /** Most channels listed by `/threadpolice stats`. */
 const MAX_STATS_CHANNELS = 10;
 
-/** Workspace-wide nudge counts for the last 7 and 30 days and all time, then the most nudged channels. */
-export function statsText(stats: NudgeStats, now = Date.now()): string {
-  const { since, week, month, total, channels } = stats.summary(now);
-  if (total.nudged === 0) return `No nudges yet. I've been counting since ${slackDate(since)}.`;
+/**
+ * Workspace-wide nudge counts for the last 7 and 30 days and all time, then the most nudged of the
+ * channels the reader `canSee`.
+ */
+export function statsText(stats: NudgeStats, canSee: (channel: string) => boolean, now = Date.now()): string {
+  const summary = stats.summary(now);
+  const { since, week, month, total } = summary;
+  if (total.nudged + total.moved + total.ignored === 0) {
+    return `No nudges yet. I've been counting since ${slackDate(since)}.`;
+  }
+  const channels = summary.channels.filter(([channel]) => canSee(channel));
   const lines = [
     `*Nudges* (counting since ${slackDate(since)})`,
     `• Last 7 days: ${countsText(week)}`,
@@ -87,13 +94,15 @@ function countsText({ nudged, moved, ignored }: Counts): string {
 export interface CommandDeps {
   prefs: PreferenceStore;
   stats: NudgeStats;
+  /** Which channels `user` may see listed by `stats`. */
+  statsVisibility(user: string): Promise<(channel: string) => boolean>;
 }
 
 /** Runs `/threadpolice <text>` for `user` and returns the private reply. */
 export async function runCommand(
   text: string,
   user: string,
-  { prefs, stats }: CommandDeps,
+  { prefs, stats, statsVisibility }: CommandDeps,
   now = Date.now(),
 ): Promise<string> {
   const [word = "", ...rest] = text.trim().split(/\s+/);
@@ -113,7 +122,7 @@ export async function runCommand(
     case "status":
       return statusText(prefs, user, now);
     case "stats":
-      return statsText(stats, now);
+      return statsText(stats, await statsVisibility(user), now);
     default:
       return HELP;
   }

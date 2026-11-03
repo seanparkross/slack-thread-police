@@ -19,6 +19,13 @@ export class JsonFile {
     return JSON.parse(raw);
   }
 
+  /** Renames an unreadable file out of the way, keeping it for a person to look at, and returns where it went. */
+  async setAside(): Promise<string> {
+    const aside = `${this.file}.corrupt`;
+    await rename(this.file, aside);
+    return aside;
+  }
+
   write(data: unknown): Promise<void> {
     const text = `${JSON.stringify(data, null, 2)}\n`;
     this.#saving = this.#saving

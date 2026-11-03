@@ -103,10 +103,24 @@ describe("NudgeStats", () => {
       expect(saved.total.nudged).toBe(2);
     });
 
-    it("refuses to start from a corrupt file rather than silently resetting the counts", async () => {
-      const corrupt = path.join(dir, "stats.json");
-      await writeFile(corrupt, JSON.stringify({ total: "lots" }));
-      await expect(NudgeStats.load(corrupt)).rejects.toThrow(/isn't a valid stats file/);
+    it("saves the start date straight away, so restarts before the first nudge keep it", async () => {
+      await NudgeStats.load(file, NOW);
+      const reloaded = await NudgeStats.load(file, NOW + 5 * DAY);
+      expect(reloaded.summary(NOW + 5 * DAY).since).toBe(NOW);
+    });
+
+    it.each([
+      ["the wrong shape", JSON.stringify({ total: "lots" })],
+      ["broken JSON", '{"since": 1'],
+    ])("sets aside a file with %s, warns, and starts afresh", async (_, contents) => {
+      const bad = path.join(dir, "stats.json");
+      await writeFile(bad, contents);
+      const warnings: string[] = [];
+      const stats = await NudgeStats.load(bad, NOW, (message) => warnings.push(message));
+      expect(warnings).toEqual([`${bad} isn't a valid stats file; moved it to ${bad}.corrupt and started counting afresh.`]);
+      expect(stats.summary(NOW).total).toEqual({ nudged: 0, moved: 0, ignored: 0 });
+      expect(await readFile(`${bad}.corrupt`, "utf8")).toBe(contents);
+      expect(JSON.parse(await readFile(bad, "utf8")).since).toBe(NOW);
     });
   });
 });
