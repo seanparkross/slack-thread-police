@@ -8,6 +8,10 @@
   A <strong>free, open-source, self-hosted and private</strong> Slack bot that keeps channels tidy by nudging users to thread their messages. Powered by a system one decision model.
 </p>
 
+<p align="center">
+  <a href="https://www.producthunt.com/products/thread-police?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-thread-police" target="_blank" rel="noopener noreferrer"><img alt="Thread Police - Private nudges that move Slack channel replies into threads | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1302834&amp;theme=light&amp;t=1794424385338"></a>
+</p>
+
 ## What it does
 
 When someone posts a top-level message that belongs in the thread of a recent message (most often a follow-up to their own earlier message, or a reply to someone else's), Thread Police sends them a private nudge ("Only visible to you").
