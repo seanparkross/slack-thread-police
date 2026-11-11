@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon-256.png" alt="Thread Police icon: a spool of red and blue thread under police lights" width="128" height="128">
+  <img src="assets/slides/01-keep-the-chat.png" alt="Thread Police: To protect and to thread. Privately nudge stray channel replies into the threads they belong in. Free, open source, self-hosted.">
 </p>
 
 <h1 align="center">🚨 Slack Thread Police 🧵</h1>
@@ -11,6 +11,8 @@
 ## What it does
 
 When someone posts a top-level message that belongs in the thread of a recent message (most often a follow-up to their own earlier message, or a reply to someone else's), Thread Police sends them a private nudge ("Only visible to you").
+
+<img src="assets/slides/02-before-and-after.png" alt="Before and after in a #office channel. Before: Jamie's projector question is buried under five follow-ups, a reminder from Maya and one more follow-up. After: the question shows '6 replies' and Maya's reminder sits right below it.">
 
 Say Sam posts this in `#engineering`:
 
@@ -37,13 +39,15 @@ One click on **Move to thread**, and the channel reads:
 
 Here's what it looks like in Slack once a follow-up has been moved:
 
-<img src="assets/screenshot-moved.png" alt="In Slack, a question now shows '1 reply', and a private Thread Police message below it says 'Moved to the thread. View it in the thread'" width="562">
+<img src="assets/slides/05-caught-on-camera.png" alt="Real Slack screenshots: a question now shows '1 reply', and a private Thread Police message below it says 'Moved to the thread. View it in the thread'. Below, Slack suggests the /threadpolice command.">
 
 **Move to thread** reposts the messages into the right thread under the author's name and avatar, then tells them they can delete the originals (or deletes them itself, if you allow it). **Ignore** dismisses the nudge. Nobody else sees anything, and anyone can turn nudges off for themselves with `/threadpolice off`.
 
 ## Benefits
 
 The channel stays easy to scan: each question keeps its context, and the back-and-forth happens in its thread. Thread replies only notify the people taking part, so the rest of the channel isn't marked unread or pinged for every follow-up. And because each nudge is a quiet, private reminder, people soon pick up the habit and start threading on their own.
+
+<img src="assets/slides/03-friendly-by-design.png" alt="Thread Police, not the fun police. Nudges are private: no public call-outs. Move it or ignore it: a suggestion, not a disciplinary hearing. Snooze or switch off with /threadpolice off.">
 
 ## AI agent setup
 
@@ -71,6 +75,8 @@ Replies are private, so only you see them. `/threadpolice` on its own, or `/thre
 Admins can also add channels from the bot's **Home** tab. See [How it works](docs/how-it-works.md) for the details.
 
 ## Privacy
+
+<img src="assets/slides/04-privacy.png" alt="Zero wiretaps. Run with a self-hosted decision model on your own server. Zero telemetry, open source under the MIT license, and support for self-hosted System One decision models. PRs welcome.">
 
 - **Message content is never persisted.** The bot keeps a small rolling window of recent top-level messages per channel in memory, and only for channels it has been invited to. A restart forgets everything.
 - It writes two files to `DATA_DIR`: `preferences.json`, the user ids of people who turned nudges off or snoozed them and until when; and `stats.json`, how many nudges each channel got and how many were moved or ignored (channel ids and numbers only, not who was nudged).

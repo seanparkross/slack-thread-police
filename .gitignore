@@ -9,3 +9,5 @@ dist/
 .claude/settings.local.json
 # Opt-out preferences written by the bot
 data/
+# Product Hunt slide sources (the README uses copies in assets/slides)
+thread-police-product-hunt/
