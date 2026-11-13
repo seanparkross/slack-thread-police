@@ -54,18 +54,20 @@ export function statusText(prefs: PreferenceStore, user: string, now = Date.now(
 const MAX_STATS_CHANNELS = 10;
 
 /**
- * Workspace-wide nudge counts for the last 7 and 30 days and all time, then the most nudged of the
+ * Workspace-wide nudge counts for the last hour, 24 hours, 7 and 30 days and all time, then the most nudged of the
  * channels the reader `canSee`.
  */
 export function statsText(stats: NudgeStats, canSee: (channel: string) => boolean, now = Date.now()): string {
   const summary = stats.summary(now);
-  const { since, week, month, total } = summary;
+  const { since, hour, day, week, month, total } = summary;
   if (total.nudged + total.moved + total.ignored === 0) {
     return `No nudges yet. I've been counting since ${slackDate(since)}.`;
   }
   const channels = summary.channels.filter(([channel]) => canSee(channel));
   const lines = [
     `*Nudges* (counting since ${slackDate(since)})`,
+    `• Last hour: ${countsText(hour)}`,
+    `• Last 24 hours: ${countsText(day)}`,
     `• Last 7 days: ${countsText(week)}`,
     `• Last 30 days: ${countsText(month)}`,
     `• All time: ${countsText(total)}`,

@@ -119,14 +119,16 @@ describe("statsText", () => {
     expect(text).not.toContain("By channel");
   });
 
-  it("totals the last 7 days, the last 30 and all time, then each channel", async () => {
+  it("totals the last hour, 24 hours, 7 days, 30 days and all time, then each channel", async () => {
     const stats = await NudgeStats.load(undefined, NOW - 60 * DAY);
     await stats.record("C1", "nudged", NOW - 40 * DAY);
     for (let i = 0; i < 4; i++) await stats.record("C1", "nudged", NOW - 10 * DAY);
     await stats.record("C1", "moved", NOW - 10 * DAY);
-    await stats.record("C2", "nudged", NOW);
+    await stats.record("C2", "nudged", NOW - 2 * 3_600_000);
     await stats.record("C2", "moved", NOW);
     expect(statsText(stats, everyChannel, NOW).split("\n").slice(1)).toEqual([
+      "• Last hour: 0 nudges: 1 moved, 0 ignored, 0 unanswered",
+      "• Last 24 hours: 1 nudge: 1 moved (100%), 0 ignored (0%), 0 unanswered",
       "• Last 7 days: 1 nudge: 1 moved (100%), 0 ignored (0%), 0 unanswered",
       "• Last 30 days: 5 nudges: 2 moved (40%), 0 ignored (0%), 3 unanswered",
       "• All time: 6 nudges: 2 moved (33%), 0 ignored (0%), 4 unanswered",
