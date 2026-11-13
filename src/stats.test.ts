@@ -6,6 +6,8 @@ import { NudgeStats } from "./stats.js";
 
 const NOW = Date.UTC(2026, 10, 3, 12);
 const DAY = 86_400_000;
+const HOUR = 3_600_000;
+const MINUTE = 60_000;
 
 describe("NudgeStats", () => {
   describe("hourly log", () => {
@@ -51,6 +53,8 @@ describe("NudgeStats", () => {
       await stats.record("C2", "ignored", NOW);
       expect(stats.summary(NOW)).toEqual({
         since: NOW - 100 * DAY,
+        hour: { nudged: 0, moved: 0, ignored: 1 },
+        day: { nudged: 0, moved: 0, ignored: 1 },
         week: { nudged: 1, moved: 0, ignored: 1 },
         month: { nudged: 3, moved: 0, ignored: 1 },
         total: { nudged: 4, moved: 0, ignored: 1 },
@@ -59,6 +63,20 @@ describe("NudgeStats", () => {
           ["C2", { nudged: 0, moved: 0, ignored: 1 }],
         ],
       });
+    });
+
+    it("counts the last hour and the last 24 hours as rolling windows across channels", async () => {
+      const stats = await NudgeStats.load(undefined, NOW - 5 * DAY);
+      await stats.record("C1", "nudged", NOW - 24 * HOUR);
+      await stats.record("C1", "nudged", NOW - 24 * HOUR + 5 * MINUTE);
+      await stats.record("C2", "moved", NOW - HOUR);
+      await stats.record("C2", "nudged", NOW - 55 * MINUTE);
+      await stats.record("C1", "ignored", NOW);
+      const { hour, day, week } = stats.summary(NOW);
+      expect(hour).toEqual({ nudged: 1, moved: 0, ignored: 1 });
+      expect(day).toEqual({ nudged: 2, moved: 1, ignored: 1 });
+      expect(week).toEqual({ nudged: 3, moved: 1, ignored: 1 });
+      expect(stats.summary(NOW + 2 * DAY).day).toEqual({ nudged: 0, moved: 0, ignored: 0 });
     });
 
     it("lists the most nudged channels first", async () => {
@@ -91,6 +109,7 @@ describe("NudgeStats", () => {
         since: NOW,
         total: { nudged: 1, moved: 1, ignored: 0 },
         days: { "2026-11-03": { C1: { nudged: 1, moved: 1, ignored: 0 } } },
+        recent: { [NOW / (5 * MINUTE)]: { nudged: 1, moved: 1, ignored: 0 } },
       });
     });
 
@@ -101,6 +120,23 @@ describe("NudgeStats", () => {
       const saved = JSON.parse(await readFile(file, "utf8"));
       expect(Object.keys(saved.days)).toEqual(["2026-12-03"]);
       expect(saved.total.nudged).toBe(2);
+    });
+
+    it("drops five-minute counts after 24 hours", async () => {
+      const stats = await NudgeStats.load(file, NOW);
+      await stats.record("C1", "nudged", NOW);
+      await stats.record("C1", "nudged", NOW + DAY);
+      const saved = JSON.parse(await readFile(file, "utf8"));
+      expect(Object.keys(saved.recent)).toEqual([String((NOW + DAY) / (5 * MINUTE))]);
+    });
+
+    it("reads a file saved before the hourly counts existed", async () => {
+      const old = path.join(dir, "stats.json");
+      await writeFile(old, JSON.stringify({ since: NOW - DAY, total: { nudged: 3, moved: 0, ignored: 0 }, days: {} }));
+      const stats = await NudgeStats.load(old, NOW);
+      await stats.record("C1", "nudged", NOW);
+      expect(stats.summary(NOW).hour.nudged).toBe(1);
+      expect(stats.summary(NOW).total.nudged).toBe(4);
     });
 
     it("saves the start date straight away, so restarts before the first nudge keep it", async () => {

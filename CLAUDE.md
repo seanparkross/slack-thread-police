@@ -24,7 +24,7 @@ Slack Thread Police: a self-hosted Slack bot (Bolt, Socket Mode) that privately 
 - `join.ts` — admin check, channel listing and bulk `conversations.join`; `ChannelJoiner` caches the channel list for a minute and runs one bulk join at a time, for the Home tab and `/threadpolice join` (admins and owners only; public channels only)
 - `home.ts` — Block Kit for the Home tab (where the bot is watching, Add channels / Join all) and the channel-picker modal
 - `preferences.ts` — `PreferenceStore`, the opt-outs saved to `DATA_DIR/preferences.json`
-- `stats.ts` — `NudgeStats`: per-channel nudge/move/ignore counts, logged hourly and kept by day in `DATA_DIR/stats.json` for `/threadpolice stats`
+- `stats.ts` — `NudgeStats`: per-channel nudge/move/ignore counts, logged hourly and kept by day (plus workspace-wide five-minute slots for the last 24 hours) in `DATA_DIR/stats.json` for `/threadpolice stats`
 - `jsonfile.ts` — `JsonFile`, the queued atomic writes behind both `DATA_DIR` files
 - `blocks.ts` — Block Kit for the nudge and its replacements; button values carry ids only
 - `move.ts` — copy-based move (repost into the thread as the author via `chat:write.customize`), then delete the original when an admin `SLACK_USER_TOKEN` is configured

@@ -72,7 +72,7 @@ Replies are private, so only you see them. `/threadpolice` on its own, or `/thre
 | `/threadpolice snooze 2h` | Pause nudges for a while: minutes, hours, days or weeks (`30m`, `2h`, `3d`, `1w`), up to 90 days. |
 | `/threadpolice on` | Turn nudges back on. |
 | `/threadpolice status` | Show whether nudges are on, off or snoozed. |
-| `/threadpolice stats` | How many nudges went out in the last 7 days, 30 days and all time, how many were moved or ignored, and the most nudged channels. |
+| `/threadpolice stats` | How many nudges went out in the last hour, 24 hours, 7 days, 30 days and all time, how many were moved or ignored, and the most nudged channels. |
 | `/threadpolice join #eng #design` | Admins and owners: add the bot to these public channels. |
 | `/threadpolice join all` | Admins and owners: add the bot to every public channel. |
 
